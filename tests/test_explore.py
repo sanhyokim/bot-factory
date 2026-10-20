@@ -103,3 +103,32 @@ def test_daily_input_cap_stops_sending(conn, fake_ai, monkeypatch):
     assert n == 1
     _, n2 = explore.submit(conn, wallets)
     assert n2 == 0
+
+
+def test_unclassifiable_hypothesis_is_not_registered(conn, fake_ai):
+    fake_ai.hypotheses = [GOOD_HYPOTHESIS, {**GOOD_HYPOTHESIS, "entry_kind": "分類できない",
+                                            "summary": "ニュースが出た直後に買う"}]
+    explore.submit(conn, [explore.WalletCheck("0x" + "a" * 40, True, "", [])])
+    rep = explore.collect(conn)
+    assert len(rep.registered) == 1 and len(rep.unclassified) == 1
+    assert conn.execute("SELECT COUNT(*) FROM ideas").fetchone()[0] == 1
+    m = conn.execute("SELECT * FROM memos").fetchone()
+    assert (m["stage"], m["tag"], m["reason"]) == ("探索", "ルール不成立", "入る条件の種類を分類できず")
+    assert m["idea_id"] is None and m["entry_kind"] == "" and m["idea_summary"] == "ニュースが出た直後に買う"
+    # 答えに7語以外の語が来ても同じ扱い
+    fake_ai.hypotheses = [{**GOOD_HYPOTHESIS, "entry_kind": "その他"}]
+    explore.submit(conn, [explore.WalletCheck("0x" + "b" * 40, True, "", [])])
+    assert len(explore.collect(conn).unclassified) == 1
+
+
+def test_ideas_registered_as_other_are_rejected(conn):
+    from factory import db
+    from factory.models import Idea
+
+    other = db.insert_idea(conn, Idea(summary="その他の案", symbol="BTC", timeframe="1h", entry_kind="その他"))
+    keep = db.insert_idea(conn, Idea(summary="高値抜けの案", symbol="BTC", timeframe="1h", entry_kind="高値抜け"))
+    assert explore.reject_registered_other(conn) == [other]
+    assert db.get_idea(conn, other)["stage"] == "否決" and db.get_idea(conn, keep)["stage"] == "探索"
+    m = conn.execute("SELECT * FROM memos WHERE idea_id = ?", (other,)).fetchone()
+    assert m["tag"] == "ルール不成立" and m["reason"] == "入る条件の種類を分類できず"
+    assert explore.reject_registered_other(conn) == []

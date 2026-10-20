@@ -87,7 +87,8 @@ def test(path: Path, data: TestData) -> str | None:
     cfg = config.load_config()
     checks, _ = autotest.run(bot, data.candles, data.funding, amount_usd=cfg["paper"]["amount_usd"],
                              fee_rate=cfg["hyperliquid"]["taker_fee_rate"], size_decimals=data.size_decimals,
-                             min_order_usd=cfg["hyperliquid"]["min_order_usd"])
+                             min_order_usd=cfg["hyperliquid"]["min_order_usd"],
+                             slippage_rate=cfg["hyperliquid"]["slippage_pct"] / 100)
     failed = [c for c in checks if not c.ok]
     return "\n".join(f"{c.name}: {c.detail}" for c in failed) or None
 

@@ -219,7 +219,8 @@ def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
         try:
             sim = simulate(load_bot(path), candles, funding, amount_usd=pcfg["amount_usd"],
                            fee_rate=hl["taker_fee_rate"], size_decimals=decimals,
-                           min_order_usd=hl["min_order_usd"], interval_ms=step, trade_from=start)
+                           min_order_usd=hl["min_order_usd"], interval_ms=step, trade_from=start,
+                           slippage_rate=hl["slippage_pct"] / 100)
         except Exception as e:  # BOTの異常終了は修理へ(SPEC 5.7)
             failure = f"paper評価で例外: {type(e).__name__}: {e}"
             try:

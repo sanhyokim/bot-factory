@@ -47,7 +47,14 @@ def test_breakout_episodes_are_counted_once_per_run():
     assert fl[5] and fl[6] and fl[12] and not fl[7]
     assert count_episodes("高値抜け", "long", 5, 0, cs) == 2
     assert count_episodes("高値抜け", "long", 5, 0, cs, since=cs[8].t) == 1
-    assert count_episodes("その他", "long", 5, 0, cs) is None
+    assert count_episodes("分類できない", "long", 5, 0, cs) is None
+
+
+def test_match_key_vocabulary_is_seven_words():
+    from factory.patterns import KINDS
+
+    assert list(KINDS) == ["高値抜け", "安値割れ", "平均回帰", "急落", "急騰", "出来高急増", "資金調達料"]
+    assert "その他" not in KINDS
 
 
 def test_mean_reversion_depends_on_side():

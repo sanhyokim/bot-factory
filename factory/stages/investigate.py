@@ -1,7 +1,7 @@
 """調査(SPEC 5.2)。計算はプログラムで行い、AI(Haiku)には見送りの理由の文章化だけを一括処理で頼む。
 
 1. 値幅(利益確定の%)が、往復の手数料+想定の滑りの3倍未満なら見送り(札 手数料負け)
-2. 直近30日で入る条件に当てはまる場面が10回未満なら見送り(札 機会不足)
+2. 直近30日で入る条件に当てはまる場面が10回未満なら見送り(札 機会不足)。入る条件の種類が7語のどれでもない案は数えられないので否決(札 ルール不成立)
 3. 必要資金が200ドルを超えるなら見送り(札 資金不足)
 外部データが取れなければ保留。3回で未対応として否決。
 """
@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from .. import ai_gateway, config, db, memo, tuning
 from ..hyperliquid.reader import INTERVAL_MS, ReaderError, interval_code
 from ..market import DAY_MS, Market
-from ..patterns import COUNTABLE, count_episodes
+from ..patterns import KINDS, UNCLASSIFIED_REASON, count_episodes
 
 PURPOSE = "investigate_reason"
 WARMUP_BARS = 1000
@@ -53,9 +53,11 @@ def check(idea, market: Market, settings: dict) -> Decision:
         code = interval_code(idea["timeframe"])
     except ValueError:
         return Decision("見送り", "未対応", f"時間の単位「{idea['timeframe']}」を扱えない")
+    if idea["entry_kind"] not in KINDS:
+        return Decision("見送り", "ルール不成立", UNCLASSIFIED_REASON)
 
     # 1. 手数料負け(データ不要)
-    cost = 2 * hl["taker_fee_rate"] * 100 + inv["slippage_pct"]
+    cost = 2 * hl["taker_fee_rate"] * 100 + hl["slippage_pct"]
     mult = settings["fee_multiple"]
     if tp < mult * cost:
         return Decision("見送り", "手数料負け",
@@ -75,18 +77,17 @@ def check(idea, market: Market, settings: dict) -> Decision:
     if not candles:
         raise ReaderError(f"{symbol} {code} の価格が取れなかった")
 
-    if idea["entry_kind"] in COUNTABLE:
-        n, x = _params(idea)
-        funding = market.funding(symbol, since - DAY_MS, now) if idea["entry_kind"] == "資金調達料" else []
-        count = count_episodes(idea["entry_kind"], side, n, x, candles, funding, since=since, step=step)
-        counted = [c for c in candles if c.t >= since]
-        span_days = (counted[-1].t + step - counted[0].t) / DAY_MS if counted else 0
-        # 取引所が30日分を返さない短い足(1分・5分)は、取れた日数から30日分に直して比べる
-        scaled = count * inv["days"] / span_days if 0 < span_days < inv["days"] - 0.5 else count
-        need = settings["min_occurrences"]
-        if scaled < need:
-            note = f"(取れた{span_days:.1f}日分を30日に換算)" if scaled != count else ""
-            return Decision("見送り", "機会不足", f"30日で{scaled:.0f}回{note}、基準{need:g}回未満")
+    n, x = _params(idea)
+    funding = market.funding(symbol, since - DAY_MS, now) if idea["entry_kind"] == "資金調達料" else []
+    count = count_episodes(idea["entry_kind"], side, n, x, candles, funding, since=since, step=step)
+    counted = [c for c in candles if c.t >= since]
+    span_days = (counted[-1].t + step - counted[0].t) / DAY_MS if counted else 0
+    # 取引所が30日分を返さない短い足(1分・5分)は、取れた日数から30日分に直して比べる
+    scaled = count * inv["days"] / span_days if 0 < span_days < inv["days"] - 0.5 else count
+    need = settings["min_occurrences"]
+    if scaled < need:
+        note = f"(取れた{span_days:.1f}日分を30日に換算)" if scaled != count else ""
+        return Decision("見送り", "機会不足", f"30日で{scaled:.0f}回{note}、基準{need:g}回未満")
 
     price, unit = candles[-1].c, 10 ** -decimals[symbol]
     qty = math.floor(amount / price / unit + 1e-9) * unit

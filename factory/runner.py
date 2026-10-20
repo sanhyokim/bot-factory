@@ -55,6 +55,9 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
             say(f"[棚卸し] {note}")
 
     def leftovers():
+        old = explore.reject_registered_other(conn)
+        if old:
+            say(f"[探索] 以前に登録された「その他」の案 {len(old)}件を否決した(入る条件の種類を分類できず)")
         got = explore.collect(conn)
         if got.wallets:
             say(f"[探索の受け取り] 前回分 {got.wallets}財布 → 案登録 {len(got.registered)}・照合で除外 {len(got.excluded)}")
@@ -84,6 +87,7 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
             say("[探索] 答えがまだ。次の実行で受け取る")
             return
         say(f"[探索] 案登録 {len(got.registered)}・照合で除外(重複) {len(got.excluded)}"
+            + (f"・分類できず {len(got.unclassified)}" if got.unclassified else "")
             + (f"・読めない仮説 {got.unreadable}" if got.unreadable else "")
             + (f"・失敗 {len(got.errors)}" if got.errors else ""))
 
