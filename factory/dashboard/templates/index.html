@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block head %}<meta http-equiv="refresh" content="{{ refresh }}">{% endblock %}
+{% block body %}
+{% if gates %}<div class="banner">要判断が {{ gates|length }} 件あります</div>{% endif %}
+<h1>bot-factory <span class="muted">{{ now }} 更新 / 今日のAI代 ${{ '%.4f'|format(costs.today) }} ・今月 ${{ '%.4f'|format(costs.month) }}</span></h1>
+
+<section class="alert" id="gates">
+  <h2>1. 要判断</h2>
+  {% if gates %}
+  <table>
+    <tr><th>BOT</th><th>関所</th><th>銘柄</th><th>時間</th><th>状態</th><th>操作</th></tr>
+    {% for b in gates %}
+    <tr><td>{{ b.id }}</td><td>{{ gate_labels[b.status] }}</td><td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td><td>{{ b.status }}</td>
+      <td><button disabled>{{ '昇格' if b.status == '本番待ち' else '再開' }}</button> <button disabled>否決</button>
+        <span class="muted">(ボタンは段階4で有効化)</span></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">待っているBOTはありません。</p>{% endif %}
+</section>
+
+<section id="stages">
+  <h2>2. 工程別の集計</h2>
+  {% if counts %}
+  <table>
+    <tr><th>工程 / 判定</th><th>件数</th><th style="width:50%"></th></tr>
+    {% for r in counts %}
+    <tr><td><a href="/?stage={{ r.stage|urlencode }}&verdict={{ r.verdict|urlencode }}">{{ r.stage }} / {{ r.verdict }}</a></td>
+      <td>{{ r.n }}</td><td><div class="bar" style="width: {{ (r.n / max_n * 100)|round(1) }}%"></div></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">案がまだありません。</p>{% endif %}
+
+  <h2 style="margin-top:16px">案の一覧</h2>
+  <form class="filters" method="get">
+    <select name="stage"><option value="">工程: すべて</option>
+      {% for s in stages %}<option {% if filters.stage == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <select name="verdict"><option value="">判定: すべて</option>
+      {% for v in verdicts %}<option {% if filters.verdict == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <select name="tag"><option value="">札: すべて</option>
+      {% for t in tags %}<option {% if filters.tag == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+    <button>絞り込む</button> <a href="/">解除</a>
+  </form>
+  <table>
+    <tr><th>案ID</th><th>作成</th><th>銘柄</th><th>時間</th><th>入り方</th><th>工程</th><th>判定</th><th>要約</th></tr>
+    {% for i in ideas %}
+    <tr><td><a href="/ideas/{{ i.id }}">{{ i.id }}</a></td><td>{{ i.created_at[:16] }}</td><td>{{ i.symbol }}</td><td>{{ i.timeframe }}</td>
+      <td>{{ i.entry_kind }}</td><td>{{ i.stage }}</td><td>{{ i.verdict }}</td><td>{{ i.summary }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<section id="memos">
+  <h2>5. 否決メモ</h2>
+  <h3 style="font-size:14px">直近7日の札</h3>
+  {% if tag_counts %}
+  <table>
+    <tr><th>札</th><th>件数</th></tr>
+    {% for t in tag_counts %}<tr><td><a href="/?tag={{ t.tag|urlencode }}#memos">{{ t.tag }}</a></td><td>{{ t.n }}</td></tr>{% endfor %}
+  </table>
+  {% else %}<p class="muted">直近7日のメモはありません。</p>{% endif %}
+
+  <h3 style="font-size:14px">週次3指標</h3>
+  <table>
+    <tr><th>週(月曜〜)</th><th>照合で除外</th><th>案登録</th><th>反証合格</th><th>合格率</th></tr>
+    {% for w in weekly %}
+    <tr><td>{{ w.week }}</td><td>{{ w.excluded }}</td><td>{{ w.registered }}</td><td>{{ w.passed }}</td>
+      <td>{{ '%.1f%%'|format(w.pass_rate * 100) if w.pass_rate is not none else '—' }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3 style="font-size:14px">メモ{% if filters.tag %}(札: {{ filters.tag }}){% endif %}</h3>
+  <table>
+    <tr><th>メモID</th><th>落ちた日</th><th>工程</th><th>札</th><th>一言の理由</th><th>案の要約</th></tr>
+    {% for m in memos %}
+    <tr><td>{{ m.id }}</td><td>{{ m.created_at[:10] }}</td><td>{{ m.stage }}</td><td>{{ m.tag }}</td><td>{{ m.reason }}</td>
+      <td>{% if m.idea_id %}<a href="/ideas/{{ m.idea_id }}">{{ m.idea_id }}</a> {% endif %}{{ m.idea_summary }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

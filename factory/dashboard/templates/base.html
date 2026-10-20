@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% block head %}{% endblock %}
+<title>bot-factory</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", sans-serif; margin: 0; padding: 16px; background: #f6f7f9; color: #1d2330; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  section { background: #fff; border: 1px solid #dde1e7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  section.alert { border: 2px solid #d33; }
+  .banner { background: #d33; color: #fff; padding: 8px 16px; border-radius: 6px; margin-bottom: 12px; font-weight: bold; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #eef0f3; }
+  .bar { background: #4a7bd0; height: 12px; border-radius: 2px; }
+  .muted { color: #6b7280; font-size: 13px; }
+  form.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  a { color: #2a5bb8; }
+</style>
+</head>
+<body>
+{% block body %}{% endblock %}
+</body>
+</html>

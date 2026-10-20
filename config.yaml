@@ -1,0 +1,36 @@
+# bot-factory 設定(SPEC 3.1 / 7章)
+db_path: data/factory.db
+
+ai:
+  # 接続先: api / claude_code / mock(mock はテスト・試し用。AIを呼ばず費用0で記録)
+  backend: api
+  # 工程ごとのモデル(SPEC 7.1)。実装・修理を Opus に上げる時はここを1行変える
+  stages:
+    explore: haiku
+    investigate: haiku
+    design: sonnet
+    implement: sonnet
+    repair: sonnet
+    refute: sonnet
+    manual: haiku          # 手動の動作確認用(python -m factory ask)
+  models:
+    haiku: claude-haiku-5-5
+    sonnet: claude-sonnet-5-5
+    opus: claude-opus-5-5
+  # 1Mトークンあたりのドル単価(2026-10時点の公表値。変わったらここを直す)
+  prices:
+    haiku:  {input: 0.10, output: 0.50}
+    sonnet: {input: 2.00, output: 10.00}
+    opus:   {input: 4.00, output: 20.00}
+  batch_discount: 0.5       # 一括処理は半額(SPEC 7.2)
+  daily_cost_limit_usd: 3.0 # 1日の上限(SPEC 7.3)
+  max_tokens: 4000
+  effort: low               # 考える深さ。安く済ませるため low
+
+memo:
+  match_days: 90            # 登録前照合の対象期間(SPEC 6.3)
+  match_tags: [手数料負け, 機会不足, 利益不足, 損益比不足]
+
+dashboard:
+  port: 8800
+  refresh_seconds: 30
