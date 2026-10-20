@@ -20,4 +20,13 @@ copy .env.example .env                          # ANTHROPIC_API_KEY を書く
 
 Mac・Linux では `py` を `python3` に、`.venv\Scripts\python` を `.venv/bin/python` に、`copy` を `cp` に読み替えます。
 
+BOTを試す(段階2):
+
+```powershell
+.venv\Scripts\python -m factory check-bot bots\sample_breakout   # 静的検査と自動テスト(過去30日の価格)
+.venv\Scripts\python -m factory paper-ff bots\sample_breakout    # 早送りのpaper評価と反証(開発用)
+```
+
+BOTは `bots/<名前>/` に `bot.yaml`(数字)と `strategy.py`(入る・出る条件)を置く。書き方は `bots/_template/` を参照。
+
 そのほか: `add-idea`(照合してから案を登録)、`add-memo`(否決メモを残す)、`run-daily`(段階3で中身を入れる)。

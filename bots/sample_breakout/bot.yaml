@@ -1,0 +1,6 @@
+# 手で書いた試験用のルール(段階2の完了確認用)。SPEC 4.2 の例「直近20本の高値を上に抜けたら買う」
+symbol: BTC
+timeframe: 15m
+take_profit_pct: 1.0
+stop_loss_pct: 0.6
+max_trades_per_day: 6
