@@ -22,3 +22,4 @@
 - AIの単価は config.yaml に置いた(Haiku 0.10/0.50、Sonnet 2/10、Opus 4/20 ドル/100万トークン)。考える深さ(effort)は low
 - 送信前の鍵検査は、名前に KEY/SECRET/TOKEN/PASSWORD/PRIVATE を含む環境変数の値(12文字以上)が送信文にあれば止める
 - 関所の「昇格/否決」ボタンは枠だけ置き、段階4で有効にする
+- 実行場所はボスのWindows PC(SPEC 3.1 はMac想定だが、ボスの手元に合わせた)。GitHubのテストはWindowsとLinuxの両方で流す
