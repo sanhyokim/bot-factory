@@ -96,7 +96,59 @@ CREATE TABLE IF NOT EXISTS counters (
     name  TEXT PRIMARY KEY,
     value INTEGER NOT NULL
 );
+
+-- 段階3: 探索で分析した財布(7日間は再分析しない)
+CREATE TABLE IF NOT EXISTS wallet_scans (
+    address    TEXT PRIMARY KEY,
+    scanned_at TEXT NOT NULL
+);
+
+-- 段階3: AIの一括処理(半額)。結果は次の実行でも受け取れる
+CREATE TABLE IF NOT EXISTS ai_batches (
+    id         TEXT PRIMARY KEY,
+    stage      TEXT NOT NULL,
+    purpose    TEXT NOT NULL,
+    model      TEXT NOT NULL,
+    backend    TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    status     TEXT NOT NULL,           -- 処理中 / 受取済み
+    items_json TEXT NOT NULL,           -- custom_id ごとの付帯情報
+    results_json TEXT                   -- api 以外の接続先で、その場で得た結果
+);
+
+-- 段階3: 価格と資金調達料の保管(取引所は直近5000本までしか返さないため)
+CREATE TABLE IF NOT EXISTS candles (
+    symbol   TEXT NOT NULL,
+    interval TEXT NOT NULL,
+    t        INTEGER NOT NULL,
+    o REAL NOT NULL, h REAL NOT NULL, l REAL NOT NULL, c REAL NOT NULL, v REAL NOT NULL,
+    PRIMARY KEY (symbol, interval, t)
+);
+CREATE TABLE IF NOT EXISTS funding (
+    symbol TEXT NOT NULL,
+    t      INTEGER NOT NULL,
+    rate   REAL NOT NULL,
+    PRIMARY KEY (symbol, t)
+);
+
+-- 段階3: 週1回の棚卸しで変えた絞り込み(SPEC 6.3 用途3)
+CREATE TABLE IF NOT EXISTS tuning_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    top_tag    TEXT,
+    setting    TEXT,
+    value      REAL,
+    note       TEXT NOT NULL
+);
 """
+
+# 既にあるデータベースに後から足した列(段階3)
+ADDED_COLUMNS = {
+    "ideas": [("side", "TEXT"), ("entry_params", "TEXT"), ("take_profit_pct", "REAL"),
+              ("stop_loss_pct", "REAL"), ("hold_count", "INTEGER NOT NULL DEFAULT 0")],
+    "rules": [("take_profit_pct", "REAL"), ("stop_loss_pct", "REAL")],
+    "bots": [("paper_start_ms", "INTEGER"), ("refute_note", "TEXT"), ("last_error", "TEXT")],
+}
 
 ID_FORMATS = {"idea": ("I-", 5), "memo": ("M-", 5), "bot": ("B-", 4)}
 
@@ -108,7 +160,17 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, cols in ADDED_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in cols:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+    conn.commit()
 
 
 def next_id(conn: sqlite3.Connection, kind: str) -> str:
@@ -128,11 +190,12 @@ def insert_idea(conn: sqlite3.Connection, idea: Idea, match_memo_id: str | None 
     ts = now_jst().isoformat(timespec="seconds")
     conn.execute(
         """INSERT INTO ideas(id, created_at, source, wallet, summary, hypothesis, symbol, timeframe,
-               entry_kind, stage, verdict, match_found, match_memo_id, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               entry_kind, stage, verdict, match_found, match_memo_id, updated_at,
+               side, entry_params, take_profit_pct, stop_loss_pct)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (idea_id, ts, idea.source, idea.wallet, idea.summary, idea.hypothesis[:300], idea.symbol,
          idea.timeframe, idea.entry_kind, idea.stage, idea.verdict, int(match_memo_id is not None),
-         match_memo_id, ts),
+         match_memo_id, ts, idea.side, idea.entry_params, idea.take_profit_pct, idea.stop_loss_pct),
     )
     conn.commit()
     return idea_id

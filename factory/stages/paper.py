@@ -155,3 +155,121 @@ def save_trades(conn: sqlite3.Connection, bot_id: str, trades: list[SimTrade], k
           t.fee_usd, t.funding_usd, t.net_usd) for t in trades],
     )
     conn.commit()
+
+
+# --- 毎日の実行(段階3): paper評価中のBOTを、始めた時刻から今までの実際の価格でたどり直す ---
+
+@dataclass
+class DailyReport:
+    running: list[str] = field(default_factory=list)
+    waiting: list[str] = field(default_factory=list)      # まだ最初の足が閉じていない
+    held: list[str] = field(default_factory=list)         # データが取れず保留
+    failed: list[str] = field(default_factory=list)       # paper評価で不合格
+    repaired: list[str] = field(default_factory=list)
+    broken: list[str] = field(default_factory=list)       # 例外が直らず否決
+    refute_passed: list[str] = field(default_factory=list)
+    refute_failed: list[str] = field(default_factory=list)
+
+
+def set_bot(conn: sqlite3.Connection, bot_id: str, **fields) -> None:
+    from ..models import now_jst
+
+    fields["updated_at"] = now_jst().isoformat(timespec="seconds")
+    cols = ", ".join(f"{k} = ?" for k in fields)
+    conn.execute(f"UPDATE bots SET {cols} WHERE id = ?", (*fields.values(), bot_id))
+    conn.commit()
+
+
+def replace_trades(conn: sqlite3.Connection, bot_id: str, trades: list[SimTrade]) -> None:
+    conn.execute("DELETE FROM trades WHERE bot_id = ? AND kind = 'paper'", (bot_id,))
+    save_trades(conn, bot_id, trades, "paper")
+
+
+def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
+    from .. import ai_gateway, db, memo
+    from ..botbase import load_bot
+    from ..engine import simulate
+    from ..hyperliquid.reader import INTERVAL_MS, ReaderError
+    from . import implement, refute
+
+    cfg = config.load_config()
+    hl, pcfg = cfg["hyperliquid"], cfg["paper"]
+    rep = DailyReport()
+    bots = conn.execute(
+        """SELECT b.id AS bot_id, b.code_path, b.attempts, b.paper_start_ms, r.*
+           FROM bots b JOIN rules r ON r.id = b.rule_id WHERE b.status = 'paper評価中' ORDER BY b.id""").fetchall()
+    for b in bots:
+        bot_id, idea_id, step = b["bot_id"], b["id"], INTERVAL_MS[b["timeframe"]]
+        start, now = b["paper_start_ms"], market.now()
+        if now < start + step:
+            rep.waiting.append(bot_id)
+            continue
+        path = config.ROOT / b["code_path"]
+        try:
+            candles = market.candles(b["symbol"], b["timeframe"], start - pcfg["warmup_bars"] * step, now)
+            funding = market.funding(b["symbol"], start - DAY_MS, now)
+            decimals = market.size_decimals()[b["symbol"]]
+            last_closed = now - now % step - step
+            if not candles or candles[-1].t < last_closed - step:
+                raise ReaderError("直近の価格が欠けている")
+        except (ReaderError, KeyError):
+            db.set_idea_state(conn, idea_id, "paper評価", "保留")
+            rep.held.append(bot_id)
+            continue
+        try:
+            sim = simulate(load_bot(path), candles, funding, amount_usd=pcfg["amount_usd"],
+                           fee_rate=hl["taker_fee_rate"], size_decimals=decimals,
+                           min_order_usd=hl["min_order_usd"], interval_ms=step, trade_from=start)
+        except Exception as e:  # BOTの異常終了は修理へ(SPEC 5.7)
+            failure = f"paper評価で例外: {type(e).__name__}: {e}"
+            try:
+                data = implement.load_test_data(market, b)
+                ok, attempts, why = implement.fix_until_pass(conn, path, b, data, failure, attempts=b["attempts"],
+                                                             bot_id=bot_id, idea_id=idea_id)
+            except ReaderError:
+                db.set_idea_state(conn, idea_id, "paper評価", "保留")
+                rep.held.append(bot_id)
+                continue
+            except ai_gateway.AIError:
+                db.set_idea_state(conn, idea_id, "paper評価", "保留")
+                rep.held.append(bot_id)
+                continue
+            if ok:
+                set_bot(conn, bot_id, attempts=attempts, last_error=failure[:300])
+                db.set_idea_state(conn, idea_id, "paper評価", "継続")
+                rep.repaired.append(bot_id)
+            else:
+                set_bot(conn, bot_id, attempts=min(attempts, 3), status="否決", last_error=f"実装不良: {why}"[:300])
+                memo.memo_for_idea(conn, idea_id, "修理", "実装不良", why[:memo.REASON_MAX])
+                rep.broken.append(bot_id)
+            continue
+
+        res = evaluate(sim)
+        replace_trades(conn, bot_id, res.trades)
+        if res.status == "未完走":
+            db.set_idea_state(conn, idea_id, "paper評価", "継続")
+            rep.running.append(bot_id)
+        elif res.status == "不合格":
+            set_bot(conn, bot_id, status="否決")
+            memo.memo_for_idea(conn, idea_id, "paper評価", res.tag, res.reason[:memo.REASON_MAX])
+            rep.failed.append(bot_id)
+        else:
+            set_bot(conn, bot_id, status="反証中")
+            db.set_idea_state(conn, idea_id, "反証", "継続")
+            rr = refute.refute(res.trades, res.start_t, res.end_t)
+            try:
+                refute.explain(conn, rr, bot_id=bot_id)
+            except ai_gateway.AIError as e:
+                rr.explanation = f"(説明文は未作成: {e})"
+            detail = " / ".join(f"{c.name}{'○' if c.ok else '×'} {c.detail}" for c in rr.checks)
+            note = f"paper評価: {res.reason}\n反証: {detail}\n{rr.explanation}"
+            if rr.ok:
+                set_bot(conn, bot_id, status="本番待ち", refute_note=note)
+                db.set_idea_state(conn, idea_id, "反証", "完了")
+                rep.refute_passed.append(bot_id)
+            else:
+                set_bot(conn, bot_id, status="否決", refute_note=note)
+                memo.memo_for_idea(conn, idea_id, "反証", rr.failed.tag,
+                                   f"{rr.failed.name}: {rr.failed.detail}"[:memo.REASON_MAX])
+                rep.refute_failed.append(bot_id)
+    return rep

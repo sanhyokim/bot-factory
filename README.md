@@ -29,4 +29,15 @@ BOTを試す(段階2):
 
 BOTは `bots/<名前>/` に `bot.yaml`(数字)と `strategy.py`(入る・出る条件)を置く。書き方は `bots/_template/` を参照。
 
-そのほか: `add-idea`(照合してから案を登録)、`add-memo`(否決メモを残す)、`run-daily`(段階3で中身を入れる)。
+工場を1周させる(段階3):
+
+```powershell
+.venv\Scripts\python -m factory run-daily                  # 探索〜実装、paper評価・反証。結果は data\logs\ にも残る
+.venv\Scripts\python -m factory run-daily --skip-explore   # 順位表を読まずに、それ以外の工程だけ
+```
+
+1日1回の順番: 棚卸し(週1回) → 前回のAIの答えの受け取り → paper評価・反証 → 探索 → 調査 → 新ロジック開発 → 実装・修理。
+毎日自動で動かすには、Windowsのタスクスケジューラに `run-daily.cmd` を登録する(手順は共有フォルダの `guides/run-daily-windows.md`)。
+実装工程が作ったBOTは `bots/B-0001/` などに置かれる(gitには入れない)。`paper-ff bots\B-0001` で過去30日の早送りも見られる。
+
+そのほか: `add-idea`(照合してから案を登録)、`add-memo`(否決メモを残す)。

@@ -29,3 +29,8 @@ def load_env() -> None:
 def db_path() -> Path:
     p = Path(os.environ.get("FACTORY_DB") or load_config()["db_path"])
     return p if p.is_absolute() else ROOT / p
+
+
+def bots_dir() -> Path:
+    p = Path(os.environ.get("FACTORY_BOTS_DIR") or load_config().get("bots_dir", "bots"))
+    return p if p.is_absolute() else ROOT / p

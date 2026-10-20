@@ -48,3 +48,10 @@ def test_history_hides_future():
 def test_strategy_cannot_import_at_runtime(tmp_path):
     d = write_bot(tmp_path, "import math\ndef entry_signal(h):\n    return None if math.isfinite(1.0) else 'long'")
     assert load_bot(d).entry_signal(History(flat(1), 1)) is None
+
+
+def test_symbol_spelling(tmp_path):
+    from tests.helpers import write_bot
+
+    assert load_bot(write_bot(tmp_path, "def entry_signal(h):\n    return None\n", symbol="btc")).spec.symbol == "BTC"
+    assert load_bot(write_bot(tmp_path, "def entry_signal(h):\n    return None\n", symbol="kPEPE")).spec.symbol == "kPEPE"

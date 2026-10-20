@@ -10,7 +10,7 @@
   <table>
     <tr><th>BOT</th><th>関所</th><th>銘柄</th><th>時間</th><th>状態</th><th>操作</th></tr>
     {% for b in gates %}
-    <tr><td>{{ b.id }}</td><td>{{ gate_labels[b.status] }}</td><td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td><td>{{ b.status }}</td>
+    <tr><td><a href="/ideas/{{ b.rule_id }}">{{ b.id }}</a></td><td>{{ gate_labels[b.status] }}</td><td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td><td>{{ b.status }}</td>
       <td><button disabled>{{ '昇格' if b.status == '本番待ち' else '再開' }}</button> <button disabled>否決</button>
         <span class="muted">(ボタンは段階4で有効化)</span></td></tr>
     {% endfor %}
@@ -49,6 +49,23 @@
   </table>
 </section>
 
+<section id="paper">
+  <h2>4. paper評価中</h2>
+  {% if paper_bots %}
+  <table>
+    <tr><th>BOT</th><th>銘柄</th><th>時間</th><th>経過日数</th><th>取引回数</th><th>平均純利益</th><th>純利益の合計</th><th>連敗(今/最大)</th><th>修理</th></tr>
+    {% for b in paper_bots %}
+    <tr><td><a href="/ideas/{{ b.idea }}">{{ b.id }}</a>{% if b.status != 'paper評価中' %} <span class="muted">{{ b.status }}</span>{% endif %}</td>
+      <td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td>
+      <td>{{ '%.1f'|format(b.days) if b.days >= 0 else '開始待ち' }}</td><td>{{ b.n }}</td>
+      <td>{{ '$%+.2f'|format(b.avg) if b.avg is not none else '—' }}</td><td>{{ '$%+.2f'|format(b.total) }}</td>
+      <td>{{ b.streak }} / {{ b.worst }}</td><td>{{ b.repairs }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="muted">完走は14日以上かつ30回以上。連敗8回・落ち込み40ドル超・72時間入らない、のどれかで不合格。</p>
+  {% else %}<p class="muted">試運転中のBOTはありません。</p>{% endif %}
+</section>
+
 <section id="memos">
   <h2>5. 否決メモ</h2>
   <h3 style="font-size:14px">直近7日の札</h3>
@@ -58,6 +75,8 @@
     {% for t in tag_counts %}<tr><td><a href="/?tag={{ t.tag|urlencode }}#memos">{{ t.tag }}</a></td><td>{{ t.n }}</td></tr>{% endfor %}
   </table>
   {% else %}<p class="muted">直近7日のメモはありません。</p>{% endif %}
+
+  {% if tuning %}<p class="muted">週1回の棚卸し({{ tuning.created_at[:10] }}): {{ tuning.note }}</p>{% endif %}
 
   <h3 style="font-size:14px">週次3指標</h3>
   <table>
@@ -76,5 +95,27 @@
       <td>{% if m.idea_id %}<a href="/ideas/{{ m.idea_id }}">{{ m.idea_id }}</a> {% endif %}{{ m.idea_summary }}</td></tr>
     {% endfor %}
   </table>
+</section>
+
+<section id="costs">
+  <h2>6. 費用</h2>
+  <p>今日 <b>${{ '%.4f'|format(costs.today) }}</b> ・今月 <b>${{ '%.4f'|format(costs.month) }}</b> ・クレジット残高の見込み <b>${{ '%.2f'|format(costs.credit_left) }}</b>
+    <span class="muted">(付与額からAPIで使った額を引いた目安)</span></p>
+  {% if costs.by_stage %}
+  <table>
+    <tr><th>工程</th><th>モデル</th><th>回数</th><th>今月の費用</th></tr>
+    {% for r in costs.by_stage %}<tr><td>{{ stage_labels.get(r.stage, r.stage) }}</td><td>{{ r.model }}</td><td>{{ r.n }}</td><td>${{ '%.4f'|format(r.usd) }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+  {% if costs.top %}
+  <h3 style="font-size:14px">案・BOTごとの上位10件(今月)</h3>
+  <table>
+    <tr><th>案 / BOT</th><th>回数</th><th>費用</th></tr>
+    {% for r in costs.top %}<tr><td>{{ r.who }}</td><td>{{ r.n }}</td><td>${{ '%.4f'|format(r.usd) }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+  <p class="muted">実装したBOT {{ implement.total }}本のうち、修理しても直らなかったもの {{ implement.failed }}本
+    {% if implement.rate is not none %}({{ '%.0f'|format(implement.rate * 100) }}%){% endif %}。
+    最初の14日でこれが30%を超えたら、実装・修理のAIをOpusに上げるかをボスが決める(SPEC 5.4)。</p>
 </section>
 {% endblock %}

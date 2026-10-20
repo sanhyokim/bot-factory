@@ -1,5 +1,6 @@
 # bot-factory 設定(SPEC 3.1 / 7章)
 db_path: data/factory.db
+bots_dir: bots              # 実装工程が作るBOTの置き場(bots/B-0001/ など)
 
 ai:
   # 接続先: api / claude_code / mock(mock はテスト・試し用。AIを呼ばず費用0で記録)
@@ -26,6 +27,7 @@ ai:
   daily_cost_limit_usd: 3.0 # 1日の上限(SPEC 7.3)
   max_tokens: 4000
   effort: low               # 考える深さ。安く済ませるため low
+  credit_usd: 100           # 付与されたクレジット(画面の「残高の見込み」に使う。SPEC 7.2)
 
 memo:
   match_days: 90            # 登録前照合の対象期間(SPEC 6.3)
@@ -41,9 +43,45 @@ hyperliquid:
   taker_fee_rate: 0.00045   # 成行の手数料率(最も下の段階。取引量が増えると下がる)
   min_order_usd: 10         # 取引所の最小注文額
   timeout_seconds: 30
+  weight_per_minute: 1000   # 読み取りの重さの上限/分(取引所の上限1200より少し低く)
+
+explore:                    # SPEC 5.1
+  top_wallets: 300          # 順位表(直近30日の損益順)から取る財布の数
+  days: 30
+  min_trades: 50            # 30日の取引回数(入って出るまでを1回)
+  max_drawdown_pct: 20      # 最大の落ち込み(確定した損益で計算)
+  max_median_notional_usd: 2000
+  max_wallets: 30           # AIに渡す財布の数/日
+  trades_for_ai: 100        # AIに渡す直近の取引の数
+  hypotheses_per_wallet: 3
+  rescan_days: 7            # 同じ財布を再分析しない日数
+  max_fill_pages: 3         # 1財布で読む約定は6000件まで。超える財布は高頻度の取引とみなし対象外
+  daily_input_chars: 5000000  # Haikuに渡す文字数の上限/日
+  batch_wait_minutes: 30    # 一括処理の答えを待つ時間。間に合わなければ次の実行で受け取る
+
+investigate:                # SPEC 5.2
+  slippage_pct: 0.05        # 想定の滑り(固定)
+  fee_multiple: 3           # 値幅が(往復の手数料+滑り)のこの倍未満なら見送り
+  min_occurrences: 10       # 30日で入る場面がこの回数未満なら見送り
+  days: 30
+  max_holds: 3              # データが取れずに保留した回数がこれに達したら未対応
+  max_per_day: 90
+
+tuning:                     # 週1回の棚卸しで最多の札に応じて1段きつくする(SPEC 6.3 用途3)
+  手数料負け: {setting: fee_multiple, value: 4}
+  機会不足: {setting: min_occurrences, value: 15}
+
+design:                     # SPEC 5.3
+  max_per_day: 10
+
+implement:                  # SPEC 5.4・5.7
+  max_per_day: 5
+  max_repairs: 3            # 修理は通算3回まで
+  test_days: 30
 
 paper:                      # SPEC 5.5
   amount_usd: 200
+  warmup_bars: 300          # 始める前の足を判断の材料として何本見せるか
   min_days: 14
   min_trades: 30
   max_losing_streak: 8      # これに達したら不合格(合格は8回未満)

@@ -75,7 +75,8 @@ def _funding_cost(side: str, qty: float, entry_t: int, exit_t: int, funding: lis
 
 def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_usd: float,
              fee_rate: float, size_decimals: int = 5, min_order_usd: float = 10.0,
-             interval_ms: int | None = None) -> SimResult:
+             interval_ms: int | None = None, trade_from: int | None = None) -> SimResult:
+    """trade_from(ミリ秒)を渡すと、その時刻より前の足は判断の材料として見せるだけで、売買はしない。"""
     if not candles:
         raise ValueError("ローソク足がない")
     spec = bot.spec
@@ -83,7 +84,8 @@ def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_
     step = interval_ms or (candles[1].t - candles[0].t if len(candles) > 1 else 60_000)
     candle_times = [c.t for c in candles]
     funding_times = [f.t for f in funding]
-    result = SimResult(start_t=candles[0].t, end_t=candles[-1].t + step, amount_usd=amount_usd)
+    start = candles[0].t if trade_from is None else max(trade_from, candles[0].t)
+    result = SimResult(start_t=start, end_t=candles[-1].t + step, amount_usd=amount_usd)
 
     pos: dict | None = None          # side, entry_price, entry_t, qty, entry_index
     pending_entry: str | None = None
@@ -131,8 +133,10 @@ def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_
                 elif bar.l <= take:
                     close(i, bar.t + step, min(bar.o, take) if pos["entry_index"] < i else take, "利益確定")
 
-        # 3) 足が閉じた所で、次の足の注文を決める
-        history = History(candles, i + 1)
+        # 3) 足が閉じた所で、次の足の注文を決める(売買を始める時刻より前は判断しない)
+        if bar.t + step < start:
+            continue
+        history = History(candles, i + 1, funding, funding_times, step)
         signal = bot.entry_signal(history)
         if signal is not None and signal not in SIDES:
             raise BotRejected(f"entry_signal の戻り値が不正: {signal!r}")
