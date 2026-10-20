@@ -51,6 +51,14 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("prompt")
     q.add_argument("--stage", default="manual")
 
+    cb = sub.add_parser("check-bot", help="BOTのフォルダを静的検査し、過去の価格で自動テストする")
+    cb.add_argument("path", help="例: bots/sample_breakout")
+    cb.add_argument("--days", type=int, default=30)
+
+    ff = sub.add_parser("paper-ff", help="過去の価格で早送りのpaper評価と反証をする(開発用)")
+    ff.add_argument("path", help="例: bots/sample_breakout")
+    ff.add_argument("--days", type=int, default=30)
+
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
     sub.add_parser("run-daily", help="工場を1周させる")
 
@@ -63,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
         from .runner import run_daily
         run_daily()
         return 0
+    if args.cmd in ("check-bot", "paper-ff"):
+        return _bot_command(args)
 
     conn = db.connect()
     try:
@@ -97,6 +107,28 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         conn.close()
+    return 0
+
+
+def _bot_command(args) -> int:
+    from . import fastforward
+    from .botbase import BotRejected, load_bot
+    from .hyperliquid.reader import Reader, ReaderError
+
+    try:
+        bot = load_bot(args.path)
+        print(f"静的検査: OK({args.path})")
+        data = fastforward.fetch(Reader(), bot, args.days)
+        out = fastforward.run(bot, data)
+        print(fastforward.report(bot, data, out, with_paper=args.cmd == "paper-ff"))
+        if args.cmd == "check-bot":
+            return 0 if all(c.ok for c in out["checks"]) else 1
+    except (BotRejected, FileNotFoundError) as e:
+        print(f"エラー: BOTが土台の決まりを守っていない: {e}", file=sys.stderr)
+        return 1
+    except (ReaderError, ValueError) as e:
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
     return 0
 
 

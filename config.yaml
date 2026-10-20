@@ -34,3 +34,24 @@ memo:
 dashboard:
   port: 8800
   refresh_seconds: 30
+
+hyperliquid:
+  info_url: https://api.hyperliquid.xyz/info
+  leaderboard_url: https://stats-data.hyperliquid.xyz/Mainnet/leaderboard
+  taker_fee_rate: 0.00045   # 成行の手数料率(最も下の段階。取引量が増えると下がる)
+  min_order_usd: 10         # 取引所の最小注文額
+  timeout_seconds: 30
+
+paper:                      # SPEC 5.5
+  amount_usd: 200
+  min_days: 14
+  min_trades: 30
+  max_losing_streak: 8      # これに達したら不合格(合格は8回未満)
+  max_drawdown_usd: 40
+  no_signal_hours: 72
+  pass_avg_net_usd: 1.0
+  pass_profit_factor: 1.5
+
+refute:                     # SPEC 5.6
+  fee_multiplier: 2
+  max_single_share: 0.5
