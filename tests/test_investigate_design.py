@@ -41,7 +41,8 @@ def test_too_few_occasions_and_unknown_symbols(conn, fake_ai, reader):
     assert memo_of(conn, rare)["tag"] == "機会不足" and "30日で0回" in memo_of(conn, rare)["reason"]
     assert memo_of(conn, unknown)["tag"] == "未対応"
     assert memo_of(conn, no_numbers)["tag"] == "未対応"
-    assert state(conn, other) == ("調査", "継続")       # 数えられない種類は2番を飛ばす
+    # 「その他」は検査を飛ばさず、分類できない案として否決する(指示書A 項目2)
+    assert memo_of(conn, other)["tag"] == "ルール不成立" and memo_of(conn, other)["reason"] == "入る条件の種類を分類できず"
 
 
 def test_capital_check(conn, fake_ai, exchange, reader):

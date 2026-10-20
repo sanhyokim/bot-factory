@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 from .. import ai_gateway, config, memo
 from ..hyperliquid.reader import INTERVAL_MS, Fill, ReaderError, TooManyFills
 from ..market import DAY_MS, Market
-from ..models import JST, Idea, now_jst
-from ..patterns import KINDS, describe, finite
+from ..models import JST, Idea, Memo, now_jst
+from ..patterns import KINDS, UNCLASSIFIED, UNCLASSIFIED_REASON, describe, finite
 
 PURPOSE = "explore"
 EPS = 1e-9
@@ -26,7 +26,7 @@ HYPOTHESIS = {
         "symbol": {"type": "string", "description": "銘柄(例: BTC)。取引履歴にある無期限先物の銘柄"},
         "timeframe": {"type": "string", "enum": TIMEFRAMES, "description": "判断に使うローソク足の長さ"},
         "side": {"type": "string", "enum": ["long", "short"], "description": "long=買い / short=売り"},
-        "entry_kind": {"type": "string", "enum": list(KINDS), "description": "入る条件の種類"},
+        "entry_kind": {"type": "string", "enum": [*KINDS, UNCLASSIFIED], "description": "入る条件の種類"},
         "n": {"type": "integer", "description": "入る条件の本数(例: 直前20本なら20)"},
         "x": {"type": "number", "description": "入る条件の%または倍率(使わない種類は0)"},
         "take_profit_pct": {"type": "number", "description": "利益確定の幅(%)。例: 1.5"},
@@ -51,7 +51,7 @@ SYSTEM = (
     "仮説は、ローソク足と資金調達料だけで判定できる数字の条件にする。"
     "入る条件の種類(entry_kind)は次から1つ選ぶ。nとxはその種類の数字:\n"
     + "\n".join(f"- {k}: {v}" for k, v in KINDS.items())
-    + "\n「その他」は上のどれにも当てはまらない時だけ使う。"
+    + f"\n上のどれにも当てはまらない時は「{UNCLASSIFIED}」を選ぶ。"
     "資金50〜500ドル・レバレッジ1倍・同時に1つだけ持つ前提で真似できる仮説にする。"
 )
 
@@ -273,8 +273,27 @@ class CollectReport:
     wallets: int = 0
     registered: list[str] = field(default_factory=list)
     excluded: list[str] = field(default_factory=list)
+    unclassified: list[str] = field(default_factory=list)   # 分類できず否決メモにした仮説
     unreadable: int = 0
     errors: list[str] = field(default_factory=list)
+
+
+def reject_unclassifiable(conn: sqlite3.Connection, h: dict) -> str:
+    """入る条件の種類を7語のどれにも分類できない仮説は、案にせず否決メモだけ残す(指示書A 項目2)。"""
+    summary = str(h.get("summary") or h.get("hypothesis") or "").strip()[:150] or "(要約なし)"
+    return memo.add_memo(conn, Memo(stage="探索", tag="ルール不成立", reason=UNCLASSIFIED_REASON,
+                                    idea_summary=summary, symbol=str(h.get("symbol", "")).strip(),
+                                    timeframe=str(h.get("timeframe", "")).strip(), source="wallet"))
+
+
+def reject_registered_other(conn: sqlite3.Connection) -> list[str]:
+    """以前の版で登録された「その他」の案を、同じ札で否決する。試運転中のBOTがあれば止める。"""
+    ids = [r["id"] for r in conn.execute("SELECT id FROM ideas WHERE entry_kind = 'その他' AND stage != '否決'")]
+    for idea_id in ids:
+        conn.execute("UPDATE bots SET status = '否決', updated_at = ? WHERE rule_id = ? AND status != '否決'",
+                     (now_jst().isoformat(timespec="seconds"), idea_id))
+        memo.memo_for_idea(conn, idea_id, "探索", "ルール不成立", UNCLASSIFIED_REASON)
+    return ids
 
 
 def collect(conn: sqlite3.Connection, *, wait_seconds: float = 0) -> CollectReport:
@@ -287,6 +306,9 @@ def collect(conn: sqlite3.Connection, *, wait_seconds: float = 0) -> CollectRepo
             rep.errors.append(f"{out.key[:10]}…: {out.error}")
             continue
         for h in (out.result.data.get("hypotheses") or [])[:per_wallet]:
+            if str(h.get("entry_kind", "")).strip() not in KINDS:
+                rep.unclassified.append(reject_unclassifiable(conn, h))
+                continue
             idea = to_idea(h, out.meta.get("wallet", out.key))
             if idea is None:
                 rep.unreadable += 1

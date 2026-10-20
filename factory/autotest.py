@@ -21,11 +21,12 @@ class CheckResult:
 
 
 def run(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_usd: float, fee_rate: float,
-        size_decimals: int, min_order_usd: float) -> tuple[list[CheckResult], SimResult | None]:
+        size_decimals: int, min_order_usd: float, slippage_rate: float = 0.0
+        ) -> tuple[list[CheckResult], SimResult | None]:
     checks: list[CheckResult] = []
     try:
         sim = simulate(bot, candles, funding, amount_usd=amount_usd, fee_rate=fee_rate,
-                       size_decimals=size_decimals, min_order_usd=min_order_usd)
+                       size_decimals=size_decimals, min_order_usd=min_order_usd, slippage_rate=slippage_rate)
     except Exception as e:  # BOTのどんな異常も(a)の不合格として修理に回す
         checks.append(CheckResult("(a) 例外なく動く", False, f"{type(e).__name__}: {e}"))
         return checks, None

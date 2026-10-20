@@ -40,7 +40,7 @@ def run(bot: Bot, data: MarketData) -> dict:
     amount = config.load_config()["paper"]["amount_usd"]
     checks, sim = autotest.run(bot, data.candles, data.funding, amount_usd=amount,
                                fee_rate=hl["taker_fee_rate"], size_decimals=data.size_decimals,
-                               min_order_usd=hl["min_order_usd"])
+                               min_order_usd=hl["min_order_usd"], slippage_rate=hl["slippage_pct"] / 100)
     out: dict = {"checks": checks, "paper": None, "refute": None, "refute_is_reference": False}
     if sim is None or not all(c.ok for c in checks):
         return out

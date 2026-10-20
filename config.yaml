@@ -42,6 +42,7 @@ hyperliquid:
   leaderboard_url: https://stats-data.hyperliquid.xyz/Mainnet/leaderboard
   taker_fee_rate: 0.00045   # 成行の手数料率(最も下の段階。取引量が増えると下がる)
   min_order_usd: 10         # 取引所の最小注文額
+  slippage_pct: 0.05        # 想定の滑り(往復で、%)。調査の計算とpaper評価の約定の値段の両方に使う
   timeout_seconds: 30
   weight_per_minute: 1000   # 読み取りの重さの上限/分(取引所の上限1200より少し低く)
 
@@ -60,7 +61,6 @@ explore:                    # SPEC 5.1
   batch_wait_minutes: 30    # 一括処理の答えを待つ時間。間に合わなければ次の実行で受け取る
 
 investigate:                # SPEC 5.2
-  slippage_pct: 0.05        # 想定の滑り(固定)
   fee_multiple: 3           # 値幅が(往復の手数料+滑り)のこの倍未満なら見送り
   min_occurrences: 10       # 30日で入る場面がこの回数未満なら見送り
   days: 30
