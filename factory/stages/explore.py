@@ -18,6 +18,7 @@ from ..patterns import KINDS, UNCLASSIFIED, UNCLASSIFIED_REASON, describe, finit
 
 PURPOSE = "explore"
 EPS = 1e-9
+SCAN_METHOD = 2     # 絞り込みの数え方の版。数え方を直したら上げる(前の版で調べた財布は7日を待たずに調べ直す)
 TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"]
 
 HYPOTHESIS = {
@@ -89,13 +90,31 @@ class WalletCheck:
     median_notional: float = 0.0
 
 
+def same_qty(a: float, b: float) -> bool:
+    return abs(a - b) <= EPS * max(1.0, abs(a), abs(b))
+
+
+def ordered(fills: list[Fill]) -> list[Fill]:
+    """時刻の順。同じ時刻の約定(1つの注文が分かれて約定したもの)は、取引所が返す順が前後することがあるので、
+    約定の直前の保有の並び(買いは小さい順、売りは大きい順)でそろえる。"""
+    return sorted(fills, key=lambda f: (f.t, f.start_position if f.side == "B" else -f.start_position))
+
+
 def round_trips(fills: list[Fill]) -> list[RoundTrip]:
-    """約定を「入ってから出るまで」の取引にまとめる。期間の前から持っていた分は数えない。"""
+    """約定を「入ってから出るまで」の取引にまとめる。期間の前から持っていた分は数えない。
+
+    保有の数量は、約定ごとに取引所が返す「約定の直前の保有」に合わせ直す。足し引きだけで追うと、
+    順の前後や欠けた約定で一度ずれた銘柄は、その後ずっと「0に戻らない」=取引0回になるため。
+    """
     state: dict[str, dict] = {}
     trips: list[RoundTrip] = []
-    for f in sorted(fills, key=lambda f: f.t):
+    for f in ordered(fills):
         st = state.setdefault(f.coin, {"pos": f.start_position, "trade": None})
         pos, tr = st["pos"], st["trade"]
+        if not same_qty(pos, f.start_position):
+            pos = f.start_position
+            if tr is not None and (abs(pos) < EPS or (pos > 0) != (tr["side"] == "long")):
+                tr = None       # 見えない約定で手仕舞い・向きの入れ替えがあった。その取引は数えない
         delta = f.sz if f.side == "B" else -f.sz
         if abs(pos) < EPS:
             tr = {"side": "long" if delta > 0 else "short", "entry_t": f.t, "cost": f.px * f.sz, "qty": f.sz,
@@ -186,8 +205,9 @@ def _reason_key(reason: str) -> str:
     return reason.split("(")[0].rstrip("0123456789+-.ドル回%").strip() or reason
 
 
-def scan(conn: sqlite3.Connection, market: Market) -> ScanReport:
-    """順位表から財布を取り、絞り込みを通った財布を最大30件返す(AIは使わない)。"""
+def scan(conn: sqlite3.Connection, market: Market, *, progress=None) -> ScanReport:
+    """順位表から財布を取り、絞り込みを通った財布を最大30件返す(AIは使わない)。
+    progress(読んだ数, 全体の数) を渡すと、50財布ごとに呼ぶ(読み終わるまで1時間以上かかることがあるため)。"""
     cfg = config.load_config()["explore"]
     reader = market.reader
     now = market.now()
@@ -196,11 +216,14 @@ def scan(conn: sqlite3.Connection, market: Market) -> ScanReport:
     rows = rows[:cfg["top_wallets"]]
     perps = set(market.size_decimals())
     cutoff = (now_jst() - timedelta(days=cfg["rescan_days"])).isoformat(timespec="seconds")
-    recent = {r[0] for r in conn.execute("SELECT address FROM wallet_scans WHERE scanned_at >= ?", (cutoff,))}
+    recent = {r[0] for r in conn.execute("SELECT address FROM wallet_scans WHERE scanned_at >= ? AND method = ?",
+                                         (cutoff, SCAN_METHOD))}
     rep = ScanReport(listed=len(rows))
-    for r in rows:
+    for i, r in enumerate(rows):
         if len(rep.passed) >= cfg["max_wallets"]:
             break
+        if progress and i and i % 50 == 0:
+            progress(i, len(rows))
         addr = r["address"]
         if addr in recent:
             rep.skipped_recent += 1
@@ -214,8 +237,8 @@ def scan(conn: sqlite3.Connection, market: Market) -> ScanReport:
             if rep.errors >= 5:     # 取引所が不調。今日はここまで
                 break
             continue
-        conn.execute("INSERT OR REPLACE INTO wallet_scans(address, scanned_at) VALUES (?, ?)",
-                     (addr, now_jst().isoformat(timespec="seconds")))
+        conn.execute("INSERT OR REPLACE INTO wallet_scans(address, scanned_at, method) VALUES (?, ?, ?)",
+                     (addr, now_jst().isoformat(timespec="seconds"), SCAN_METHOD))
         conn.commit()
         rep.checked += 1
         if fills is None:
