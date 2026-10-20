@@ -73,9 +73,9 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
             say(f"[反証] 合格(関所1へ) {_ids(r.refute_passed)}・不合格 {_ids(r.refute_failed)}")
 
     def explore_step():
-        s = explore.scan(conn, market, progress=lambda i, n: say(f"[探索] 財布を読んでいる {i}/{n}"))
+        s = explore.scan(conn, market, progress=lambda i, n: say(f"[探索] 財布を調べている {i}/{n}"))
         reasons = "、".join(f"{k} {v}" for k, v in sorted(s.reasons.items(), key=lambda kv: -kv[1])[:4])
-        say(f"[探索] 順位表 {s.listed}財布・7日以内に分析済み {s.skipped_recent}・今回調べた {s.checked}・"
+        say(f"[探索] 順位表の候補 {s.listed}財布・7日以内に分析済み {s.skipped_recent}・今回調べた {s.checked}・"
             f"絞り込み通過 {len(s.passed)}" + (f"(落ちた理由: {reasons})" if reasons else "")
             + (f"・取得失敗 {s.errors}" if s.errors else ""))
         batch_id, n = explore.submit(conn, s.passed)
