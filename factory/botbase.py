@@ -10,6 +10,7 @@ strategy.py からは変えられない。strategy.py は読み込む前に静�
 from __future__ import annotations
 
 import ast
+import bisect
 import builtins
 import math
 import statistics
@@ -19,7 +20,7 @@ from pathlib import Path
 
 import yaml
 
-from .hyperliquid.reader import Candle, interval_code
+from .hyperliquid.reader import Candle, Funding, interval_code
 
 ALLOWED_IMPORTS = {"math", "statistics"}
 FORBIDDEN_NAMES = {
@@ -63,9 +64,13 @@ class Position:
 class History(Sequence):
     """今の足までのローソク足。先の足は見えない(覗き見の防止)。"""
 
-    def __init__(self, candles: Sequence[Candle], end: int):
+    def __init__(self, candles: Sequence[Candle], end: int, funding: Sequence[Funding] = (),
+                 funding_times: Sequence[int] = (), step: int = 0):
         self._candles = candles
         self._end = end  # 見えるのは [0, end)
+        self._funding = funding
+        self._funding_times = funding_times
+        self._step = step
 
     def __len__(self) -> int:
         return self._end
@@ -90,6 +95,13 @@ class History(Sequence):
 
     def volumes(self, n: int) -> list[float]:
         return [c.v for c in self[-n:]]
+
+    def funding_rates(self, n: int) -> list[float]:
+        """今の足が閉じた時点までに決まった、直近n回の1時間ごとの資金調達料(0.0001 = 0.01%)。"""
+        if not self._end or not self._funding:
+            return []
+        k = bisect.bisect_right(self._funding_times, self._candles[self._end - 1].t + self._step)
+        return [f.rate for f in self._funding[max(0, k - n):k]]
 
 
 @dataclass
@@ -131,6 +143,12 @@ def static_check(source: str) -> None:
         raise BotRejected("entry_signal がない")
 
 
+def _symbol(s: str) -> str:
+    """btc は BTC に直す。kPEPE のように大文字と小文字が混じる銘柄はそのまま。"""
+    s = s.strip()
+    return s if any(c.isupper() for c in s) else s.upper()
+
+
 def load_spec(path: Path) -> BotSpec:
     data = yaml.safe_load((path / "bot.yaml").read_text(encoding="utf-8")) or {}
     missing = [f for f in REQUIRED_FIELDS if data.get(f) in (None, "")]
@@ -141,7 +159,7 @@ def load_spec(path: Path) -> BotSpec:
     if int(data.get("max_positions", 1)) != 1:
         raise BotRejected("同時に持てる数は1固定")
     spec = BotSpec(
-        name=path.name, symbol=str(data["symbol"]).upper(), timeframe=interval_code(str(data["timeframe"])),
+        name=path.name, symbol=_symbol(str(data["symbol"])), timeframe=interval_code(str(data["timeframe"])),
         take_profit_pct=float(data["take_profit_pct"]), stop_loss_pct=float(data["stop_loss_pct"]),
         max_trades_per_day=int(data["max_trades_per_day"]),
         max_hold_bars=int(data["max_hold_bars"]) if data.get("max_hold_bars") else None,

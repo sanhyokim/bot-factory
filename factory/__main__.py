@@ -60,7 +60,9 @@ def main(argv: list[str] | None = None) -> int:
     ff.add_argument("--days", type=int, default=30)
 
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
-    sub.add_parser("run-daily", help="工場を1周させる")
+    rd = sub.add_parser("run-daily", help="工場を1周させる(探索〜実装、paper評価・反証)")
+    rd.add_argument("--wait-minutes", type=float, help="探索のAIの答えを待つ分数(既定は config.yaml)")
+    rd.add_argument("--skip-explore", action="store_true", help="探索を行わない(順位表を読まない)")
 
     args = p.parse_args(argv)
     if args.cmd == "dashboard":
@@ -69,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "run-daily":
         from .runner import run_daily
-        run_daily()
+        run_daily(wait_minutes=args.wait_minutes, skip_explore=args.skip_explore)
         return 0
     if args.cmd in ("check-bot", "paper-ff"):
         return _bot_command(args)

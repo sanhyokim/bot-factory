@@ -51,6 +51,11 @@ class Idea:
     entry_kind: str = ""
     stage: str = "探索"
     verdict: str = "案登録"
+    # 段階3: 探索のAIが数字で出す項目(調査で計算に使う)
+    side: str | None = None             # long / short
+    entry_params: str | None = None     # 入る条件の数字(JSON)
+    take_profit_pct: float | None = None
+    stop_loss_pct: float | None = None
 
 
 @dataclass

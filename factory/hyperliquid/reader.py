@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass
 
 import httpx
@@ -24,9 +25,17 @@ CANDLE_LIMIT = 5000      # 1回で取れるローソク足の最大本数
 FUNDING_PAGE = 500       # 1回で取れる資金調達料の最大件数
 FILLS_PAGE = 2000        # 1回で取れる約定の最大件数
 
+# 取引所の利用量の重さ(1分あたりの上限がある)。(1回の重さ, 返ってきた何件ごとに1足すか)
+WEIGHTS = {"candleSnapshot": (20, 60), "fundingHistory": (20, 20), "userFillsByTime": (20, 20),
+           "meta": (20, 0)}
+
 
 class ReaderError(RuntimeError):
     """取引所からデータが取れなかった。"""
+
+
+class TooManyFills(ReaderError):
+    """財布の約定が多すぎて、決めたページ数では期間を読み切れなかった。"""
 
 
 @dataclass(frozen=True)
@@ -55,6 +64,7 @@ class Fill:
     direction: str        # "Open Long" など
     closed_pnl: float
     fee: float
+    start_position: float = 0.0   # この約定の直前の保有数量(買いはプラス、売りはマイナス)
 
 
 def interval_code(timeframe: str) -> str:
@@ -65,12 +75,32 @@ def interval_code(timeframe: str) -> str:
 
 
 class Reader:
-    def __init__(self, client: httpx.Client | None = None, *, retries: int = 3):
+    def __init__(self, client: httpx.Client | None = None, *, retries: int = 3,
+                 weight_per_minute: float | None = None, clock=time.monotonic, sleep=time.sleep):
         cfg = config.load_config()["hyperliquid"]
         self.info_url = cfg["info_url"]
         self.leaderboard_url = cfg["leaderboard_url"]
         self.client = client or httpx.Client(timeout=cfg["timeout_seconds"])
         self.retries = retries
+        # 1分あたりの重さの上限(取引所の上限1200より少し低くしておく)。0 なら待たない
+        self.weight_per_minute = (cfg.get("weight_per_minute", 1000)
+                                  if weight_per_minute is None else weight_per_minute)
+        self._clock, self._sleep = clock, sleep
+        self._spent: deque[tuple[float, float]] = deque()
+
+    def _throttle(self, weight: float) -> None:
+        """直近1分の重さが上限を超えないように待つ。"""
+        if not self.weight_per_minute:
+            return
+        while True:
+            now = self._clock()
+            while self._spent and now - self._spent[0][0] >= 60:
+                self._spent.popleft()
+            used = sum(w for _, w in self._spent)
+            if not self._spent or used + weight <= self.weight_per_minute:
+                break
+            self._sleep(60 - (now - self._spent[0][0]) + 0.05)
+        self._spent.append((now, weight))
 
     def _request(self, method: str, url: str, payload: dict | None = None):
         last: Exception | None = None
@@ -88,7 +118,12 @@ class Reader:
         raise ReaderError(f"Hyperliquid から取得できなかった: {last}") from last
 
     def info(self, payload: dict):
-        return self._request("POST", self.info_url, payload)
+        base, per = WEIGHTS.get(payload.get("type"), (20, 0))
+        self._throttle(base)
+        data = self._request("POST", self.info_url, payload)
+        if per and isinstance(data, list) and self.weight_per_minute:
+            self._spent.append((self._clock(), len(data) / per))
+        return data
 
     # --- 価格 ---
     def candles(self, coin: str, timeframe: str, start_ms: int, end_ms: int) -> list[Candle]:
@@ -148,11 +183,17 @@ class Reader:
         return rows
 
     # --- 財布の取引履歴 ---
-    def user_fills(self, address: str, start_ms: int, end_ms: int) -> list[Fill]:
+    def user_fills(self, address: str, start_ms: int, end_ms: int, *,
+                   max_pages: int | None = None) -> list[Fill]:
+        """財布の約定(古い順)。max_pages を超えても読み切れない時は TooManyFills。"""
         out: list[Fill] = []
         seen: set[tuple] = set()
         cursor = start_ms
+        pages = 0
         while cursor < end_ms:
+            if max_pages is not None and pages >= max_pages:
+                raise TooManyFills(f"{address} の約定が{max_pages * FILLS_PAGE}件を超える")
+            pages += 1
             rows = self.info({"type": "userFillsByTime", "user": address,
                               "startTime": cursor, "endTime": end_ms}) or []
             for r in rows:
@@ -161,7 +202,8 @@ class Reader:
                     continue
                 seen.add(key)
                 out.append(Fill(r["coin"], int(r["time"]), float(r["px"]), float(r["sz"]), r["side"],
-                                r.get("dir", ""), float(r.get("closedPnl", 0)), float(r.get("fee", 0))))
+                                r.get("dir", ""), float(r.get("closedPnl", 0)), float(r.get("fee", 0)),
+                                float(r.get("startPosition", 0) or 0)))
             if len(rows) < FILLS_PAGE:
                 break
             last = max(int(r["time"]) for r in rows)
