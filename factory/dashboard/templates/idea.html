@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<p><a href="/">← 戻る</a></p>
+<h1>{{ idea.id }} <span class="muted">{{ idea.stage }} / {{ idea.verdict }}</span></h1>
+<section>
+  <table>
+    <tr><th>作成日時</th><td>{{ idea.created_at }}</td></tr>
+    <tr><th>出どころ</th><td>{{ idea.source }}{% if idea.wallet %}({{ idea.wallet }}){% endif %}</td></tr>
+    <tr><th>銘柄 / 時間 / 入り方</th><td>{{ idea.symbol }} / {{ idea.timeframe }} / {{ idea.entry_kind }}</td></tr>
+    <tr><th>要約</th><td>{{ idea.summary }}</td></tr>
+    <tr><th>仮説</th><td>{{ idea.hypothesis }}</td></tr>
+    <tr><th>照合結果</th><td>{{ ('あり(' ~ idea.match_memo_id ~ ')') if idea.match_found else 'なし' }}</td></tr>
+  </table>
+</section>
+<section>
+  <h2>売買ルール</h2>
+  {% if rule %}
+  <table>
+    <tr><th>銘柄</th><td>{{ rule.symbol }}</td></tr><tr><th>時間の単位</th><td>{{ rule.timeframe }}</td></tr>
+    <tr><th>入る条件</th><td>{{ rule.entry_condition }}</td></tr><tr><th>出る条件</th><td>{{ rule.exit_condition }}</td></tr>
+    <tr><th>1回の上限額</th><td>${{ rule.max_amount_usd }}</td></tr><tr><th>1日の最大取引回数</th><td>{{ rule.max_trades_per_day }}</td></tr>
+  </table>
+  {% else %}<p class="muted">まだありません。</p>{% endif %}
+</section>
+<section>
+  <h2>否決メモ</h2>
+  {% for m in memos %}<p>{{ m.id }} {{ m.created_at[:10] }} [{{ m.stage }}] {{ m.tag }}: {{ m.reason }}</p>
+  {% else %}<p class="muted">ありません。</p>{% endfor %}
+</section>
+<section>
+  <h2>AI代</h2>
+  {% for c in costs %}<p>{{ c.created_at[:16] }} {{ c.stage }} {{ c.model }} {{ c.input_tokens }}/{{ c.output_tokens }} トークン ${{ '%.5f'|format(c.cost_usd) }}</p>
+  {% else %}<p class="muted">ありません。</p>{% endfor %}
+</section>
+{% endblock %}
