@@ -4,20 +4,20 @@
 
 ## 使い方(手元のWindows)
 
-初回の準備から画面を開くまでの詳しい手順は、プロジェクトの共有フォルダの `guides/haiku-check-windows.md` にあります。コマンド プロンプトで次を実行します。
+初回の準備から画面を開くまでの詳しい手順は、プロジェクトの共有フォルダの `guides/haiku-check-windows.md` にあります。PowerShell(管理者ではない普通のもの)で次を実行します。
 
-```bat
+```powershell
+cd ~\bot-factory
 py -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env        & rem ANTHROPIC_API_KEY を書く
-python -m factory init        & rem data/factory.db を作る
-python -m factory seed-sample & rem 手で書いた案を10件入れる
-python -m factory ask "1+1は?"  & rem Haiku に1問。費用帳簿に1行つく
-python -m factory dashboard   & rem http://localhost:8800 を開く
-python -m pytest -q
+.venv\Scripts\python -m pip install -r requirements.txt
+copy .env.example .env                          # ANTHROPIC_API_KEY を書く
+.venv\Scripts\python -m factory init           # data/factory.db を作る
+.venv\Scripts\python -m factory seed-sample    # 手で書いた案を10件入れる
+.venv\Scripts\python -m factory ask "1+1は?"   # Haiku に1問。費用帳簿に1行つく
+.venv\Scripts\python -m factory dashboard      # http://localhost:8800 を開く
+.venv\Scripts\python -m pytest -q
 ```
 
-Mac・Linux では `py` を `python3` に、`.venv\Scripts\activate` を `source .venv/bin/activate` に、`copy` を `cp` に読み替えます。
+Mac・Linux では `py` を `python3` に、`.venv\Scripts\python` を `.venv/bin/python` に、`copy` を `cp` に読み替えます。
 
 そのほか: `add-idea`(照合してから案を登録)、`add-memo`(否決メモを残す)、`run-daily`(段階3で中身を入れる)。

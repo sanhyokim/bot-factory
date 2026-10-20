@@ -28,3 +28,15 @@ def test_secret_is_never_sent(conn, monkeypatch):
     with pytest.raises(ai_gateway.SecretLeak):
         ai_gateway.ask(conn, "manual", "鍵は 0xdeadbeefdeadbeef です")
     assert conn.execute("SELECT COUNT(*) FROM ai_costs").fetchone()[0] == 0
+
+
+def test_missing_api_key_gives_short_message(conn, monkeypatch, capsys):
+    from factory.__main__ import main
+
+    monkeypatch.setenv("FACTORY_AI_BACKEND", "api")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setattr("factory.config.load_env", lambda: None)
+    assert main(["ask", "1+1は?"]) == 1
+    err = capsys.readouterr().err
+    assert "APIキーが設定されていない" in err and "Traceback" not in err
+    assert conn.execute("SELECT COUNT(*) FROM ai_costs").fetchone()[0] == 0

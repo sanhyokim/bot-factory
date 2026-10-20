@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
             print(r.text)
             print(f"--- {r.model} 入力{r.input_tokens}/出力{r.output_tokens}トークン ${r.cost_usd:.6f}",
                   file=sys.stderr)
-    except (ValueError, KeyError, ai_gateway.BudgetExceeded, ai_gateway.SecretLeak) as e:
+    except (ValueError, KeyError, ai_gateway.AIError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 1
     finally:
