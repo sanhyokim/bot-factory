@@ -15,7 +15,7 @@ def fill(t, side, sz, px, pnl=0.0, start=0.0, coin="BTC"):
 
 def test_round_trips_follow_the_position():
     fills = [
-        fill(1, "B", 1.0, 100), fill(2, "B", 1.0, 110),            # 2回に分けて買い(平均105)
+        fill(1, "B", 1.0, 100), fill(2, "B", 1.0, 110, start=1.0),  # 2回に分けて買い(平均105)
         fill(3, "A", 0.5, 120, 7.5, 2.0), fill(4, "A", 1.5, 130, 37.5, 1.5),   # 2回に分けて売り切り
         fill(5, "A", 1.0, 100, 0, 0.0), fill(6, "B", 3.0, 90, 10, -1.0),       # 売り→買い越しで向きが変わる
         fill(7, "A", 2.0, 95, 10, 2.0),
@@ -74,7 +74,8 @@ def test_scan_skips_recent_and_high_frequency_wallets(conn, exchange, reader):
     exchange.fills = {"0x" + "a" * 40: trader_fills("BTC", start, 60),
                       "0x" + "b" * 40: trader_fills("BTC", start, 3500, gap=HOUR // 8),
                       "0x" + "c" * 40: trader_fills("BTC", start, 60)}
-    conn.execute("INSERT INTO wallet_scans VALUES (?, ?)", ("0x" + "c" * 40, "2099-01-01T00:00:00+09:00"))
+    conn.execute("INSERT INTO wallet_scans(address, scanned_at, method) VALUES (?, ?, ?)",
+                 ("0x" + "c" * 40, "2099-01-01T00:00:00+09:00", explore.SCAN_METHOD))
     rep = explore.scan(conn, Market(conn, reader))
     assert rep.skipped_recent == 1 and rep.checked == 2 and len(rep.passed) == 1
     assert rep.reasons == {"約定が多すぎる(高頻度の取引)": 1}
@@ -132,3 +133,68 @@ def test_ideas_registered_as_other_are_rejected(conn):
     m = conn.execute("SELECT * FROM memos WHERE idea_id = ?", (other,)).fetchone()
     assert m["tag"] == "ルール不成立" and m["reason"] == "入る条件の種類を分類できず"
     assert explore.reject_registered_other(conn) == []
+
+
+# --- 1日目に順位表の300財布がすべて「取引回数が足りない・約定が多すぎる」で落ちたことへの対応 ---
+
+def test_same_time_fills_returned_in_reverse_order_are_still_counted():
+    # 1つの注文が同じ時刻に2回に分かれて約定し、取引所が逆の順で返した場合
+    fills = [fill(10, "B", 1.0, 101, start=1.0), fill(10, "B", 1.0, 100, start=0.0),
+             fill(20, "A", 1.0, 111, 10, start=1.0), fill(20, "A", 1.0, 110, 10, start=2.0),
+             fill(30, "B", 1.0, 100, start=0.0), fill(40, "A", 1.0, 105, 5, start=1.0)]
+    trips = explore.round_trips(fills)
+    assert [(t.entry_t, t.exit_t) for t in trips] == [(10, 20), (30, 40)]
+    assert trips[0].size == 2.0 and trips[0].entry_px == 100.5 and trips[0].exit_px == 110.5
+
+
+def test_position_follows_the_exchange_after_a_missing_fill():
+    fills = [fill(1, "B", 1.0, 100), fill(2, "A", 1.0, 101, 1, start=1.0),
+             fill(3, "B", 2.0, 100, start=0.0),          # ここで1.0売った約定が欠けている(本当は保有1.0で残る)
+             fill(5, "B", 1.0, 100, start=0.0), fill(6, "A", 1.0, 102, 2, start=1.0)]
+    trips = explore.round_trips(fills)
+    assert [(t.entry_t, t.exit_t) for t in trips] == [(1, 2), (5, 6)]
+
+
+def test_wallets_checked_with_the_old_method_are_checked_again(conn, exchange, reader):
+    start = now_ms() - 20 * DAY
+    a, b = "0x" + "a" * 40, "0x" + "b" * 40
+    exchange.board = [board_row(a), board_row(b)]
+    exchange.fills = {a: trader_fills("BTC", start, 60), b: trader_fills("BTC", start, 60)}
+    recent = "2099-01-01T00:00:00+09:00"
+    conn.execute("INSERT INTO wallet_scans(address, scanned_at, method) VALUES (?, ?, 1)", (a, recent))
+    conn.execute("INSERT INTO wallet_scans(address, scanned_at, method) VALUES (?, ?, ?)",
+                 (b, recent, explore.SCAN_METHOD))
+    rep = explore.scan(conn, Market(conn, reader))
+    assert rep.skipped_recent == 1 and rep.checked == 1 and [w.address for w in rep.passed] == [a]
+    assert conn.execute("SELECT method FROM wallet_scans WHERE address = ?", (a,)).fetchone()[0] == explore.SCAN_METHOD
+
+
+def test_scan_reports_progress_every_50_wallets(conn, exchange, reader):
+    exchange.board = [board_row(f"0x{i:040x}") for i in range(120)]
+    seen = []
+    explore.scan(conn, Market(conn, reader), progress=lambda i, n: seen.append((i, n)))
+    assert seen == [(50, 120), (100, 120)]
+
+
+def test_explore_check_counts_each_filter_without_recording(conn, exchange, reader):
+    from factory import walletcheck
+
+    start = now_ms() - 20 * DAY
+    good, few, big = "0x" + "a" * 40, "0x" + "b" * 40, "0x" + "c" * 40
+    exchange.board = [board_row(good, month_pnl=3000), board_row(few, month_pnl=2000), board_row(big, month_pnl=1000)]
+    exchange.fills = {good: trader_fills("BTC", start, 60), few: trader_fills("BTC", start, 20),
+                      big: trader_fills("BTC", start, 60, notional=5000)}
+    out = walletcheck.run(reader, 2)
+    assert "全部の条件を通過 1" in out and "取引50回以上 1" in out
+    assert "取引20回(基準50回以上)" in out and "前の数え方で保有がずれた財布 0" in out
+    assert "[参考: 30日の利益率の順で上位(上と重ならない財布)]" in out and "中央値" in out
+    assert conn.execute("SELECT COUNT(*) FROM wallet_scans").fetchone()[0] == 0
+
+
+def test_old_way_of_counting_drifts_when_same_time_fills_come_reversed():
+    from factory import walletcheck
+
+    fills = [fill(10, "B", 1.0, 101, start=1.0), fill(10, "B", 1.0, 100, start=0.0),
+             fill(20, "A", 2.0, 110, 20, start=2.0)]
+    assert walletcheck.naive_drift(fills) == 2       # 最初の約定の保有から足し引きすると、以後ずっとずれる
+    assert len(explore.round_trips(fills)) == 1

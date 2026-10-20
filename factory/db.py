@@ -148,6 +148,7 @@ ADDED_COLUMNS = {
               ("stop_loss_pct", "REAL"), ("hold_count", "INTEGER NOT NULL DEFAULT 0")],
     "rules": [("take_profit_pct", "REAL"), ("stop_loss_pct", "REAL")],
     "bots": [("paper_start_ms", "INTEGER"), ("refute_note", "TEXT"), ("last_error", "TEXT")],
+    "wallet_scans": [("method", "INTEGER NOT NULL DEFAULT 1")],   # 絞り込みの数え方の版(探索の SCAN_METHOD)
 }
 
 ID_FORMATS = {"idea": ("I-", 5), "memo": ("M-", 5), "bot": ("B-", 4)}
