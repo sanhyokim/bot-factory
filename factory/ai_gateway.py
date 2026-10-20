@@ -20,11 +20,15 @@ from .models import MODELS, now_jst
 SECRET_MARKERS = ("KEY", "SECRET", "TOKEN", "PASSWORD", "PRIVATE")
 
 
-class BudgetExceeded(RuntimeError):
+class AIError(RuntimeError):
+    """AI窓口で止まった理由。画面やコマンドにはこの文だけを出す。"""
+
+
+class BudgetExceeded(AIError):
     """今日のAI代が上限に達している。"""
 
 
-class SecretLeak(RuntimeError):
+class SecretLeak(AIError):
     """送信文に鍵が含まれている。"""
 
 
@@ -66,20 +70,33 @@ def check_secrets(text: str) -> None:
 def _call_api(model_id: str, prompt: str, system: str | None) -> tuple[str, int, int]:
     import anthropic
 
+    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        raise AIError("APIキーが設定されていない。.env の ANTHROPIC_API_KEY= の右にキーを書いて保存する")
     ai = config.load_config()["ai"]
     client = anthropic.Anthropic()
     kwargs = {}
     if system:
         kwargs["system"] = system
-    resp = client.messages.create(
-        model=model_id,
-        max_tokens=ai["max_tokens"],
-        output_config={"effort": ai["effort"]},
-        messages=[{"role": "user", "content": prompt}],
-        **kwargs,
-    )
+    try:
+        resp = client.messages.create(
+            model=model_id,
+            max_tokens=ai["max_tokens"],
+            output_config={"effort": ai["effort"]},
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs,
+        )
+    except anthropic.AuthenticationError as e:
+        raise AIError("APIキーが正しくない。.env のキーを確認する(前後の空白や欠けがないか)") from e
+    except anthropic.PermissionDeniedError as e:
+        raise AIError("APIキーに使用権限がない。API管理画面でクレジット残高と上限を確認する") from e
+    except anthropic.RateLimitError as e:
+        raise AIError("AIの利用回数か上限額に達した。少し待つか、API管理画面の上限を確認する") from e
+    except anthropic.APIConnectionError as e:
+        raise AIError("AIに接続できない。インターネット接続を確認する") from e
+    except anthropic.APIStatusError as e:
+        raise AIError(f"AIの呼び出しに失敗した(状態コード {e.status_code}: {e.message})") from e
     if resp.stop_reason == "refusal":
-        raise RuntimeError("AIが回答を断った(refusal)")
+        raise AIError("AIが回答を断った(refusal)")
     text = "".join(b.text for b in resp.content if b.type == "text")
     return text, resp.usage.input_tokens, resp.usage.output_tokens
 
