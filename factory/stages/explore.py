@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import statistics
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -205,16 +206,33 @@ def _reason_key(reason: str) -> str:
     return reason.split("(")[0].rstrip("0123456789+-.ドル回%").strip() or reason
 
 
-def candidates(board: list[dict]) -> list[dict]:
+def candidate_rules() -> list[tuple[str, Callable[[dict], bool]]]:
+    """順位表の候補を選ぶ条件(上から順にかける)。名前は診断(explore-check)の表示に使う。"""
+    cfg = config.load_config()["explore"]
+    low, high = cfg["candidate_account_usd"]
+    vlow, vhigh = cfg["candidate_volume_usd"]
+    return [
+        ("損益プラス", lambda r: r["month_pnl"] > 0),
+        (f"資金{low:,}〜{high:,}ドル", lambda r: low <= r["account_value"] <= high),
+        (f"30日の取引量{vlow:,}〜{vhigh:,}ドル", lambda r: vlow <= r["month_volume"] <= vhigh),
+        # 30日の損益が今の資金より大きい財布は、利益を引き出しながら大きく張っている(10/21 の診断で上位30件すべて)。
+        # 落ち込みの計算(5.1 の3)も30日前の資金を「今の資金 − 30日の損益」で推すので、これがプラスの財布に限る
+        ("30日前の資金がプラス", lambda r: r["account_value"] - r["month_pnl"] > 0),
+    ]
+
+
+def candidates(board: list[dict], *, steps: list[tuple[str, int]] | None = None) -> list[dict]:
     """順位表から、真似できる大きさで取引していそうな財布を選び、30日の損益の順に並べる(SPEC 5.1 の1)。
 
     順位表の損益の上位は資金数百万〜数億ドルの財布と高頻度の取引ばかりで、取引額の中央値2000ドル以下(5.1 の3)を
-    満たす財布が1件もなかった(2026-10-20 の診断)。そこで先に順位表の数字(資金・30日の取引量)で候補を絞る。
+    満たす財布が1件もなかった(2026-10-20 の診断)。そこで先に順位表の数字(資金・30日の取引量・損益)で候補を絞る。
+    steps を渡すと、条件ごとに残った数を入れる。
     """
-    cfg = config.load_config()["explore"]
-    low, high = cfg["candidate_account_usd"]
-    rows = [r for r in board if r["month_pnl"] > 0 and low <= r["account_value"] <= high
-            and r["month_volume"] >= cfg["candidate_min_volume_usd"]]
+    rows = board
+    for name, ok in candidate_rules():
+        rows = [r for r in rows if ok(r)]
+        if steps is not None:
+            steps.append((name, len(rows)))
     return sorted(rows, key=lambda r: -r["month_pnl"])
 
 
