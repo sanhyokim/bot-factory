@@ -184,8 +184,13 @@ def test_candidates_are_wallets_trading_at_a_copyable_size():
     idle = dict(address="0xi", account_value=5_000, month_pnl=900, month_roi=0.2, month_volume=2_000)
     losing = dict(address="0xl", account_value=5_000, month_pnl=-50, month_roi=-0.01, month_volume=90_000)
     empty = dict(address="0xe", account_value=20, month_pnl=500, month_roi=25.0, month_volume=60_000)
-    rows = explore.candidates([whale, small, better, idle, losing, empty])
+    # 利益を引き出しながら大きく張る財布(30日の損益が今の資金より大きい)と、取引量が大きすぎる財布
+    withdrew = dict(address="0xd", account_value=2_700, month_pnl=258_000, month_roi=1.0, month_volume=900_000)
+    busy = dict(address="0xh", account_value=8_000, month_pnl=4_000, month_roi=1.0, month_volume=58_000_000)
+    steps = []
+    rows = explore.candidates([whale, small, better, idle, losing, empty, withdrew, busy], steps=steps)
     assert [r["address"] for r in rows] == ["0xb", "0xs"]       # 損益の順
+    assert [k for _, k in steps] == [7, 5, 3, 2]
 
 
 def test_scan_checks_up_to_300_wallets_a_day_skipping_recent_ones(conn, exchange, reader, monkeypatch):
@@ -217,6 +222,7 @@ def test_explore_check_counts_each_filter_without_recording(conn, exchange, read
                       big: trader_fills("BTC", start, 60, notional=5000)}
     out = walletcheck.run(reader, 30)
     assert "順位表 4財布のうち候補 3財布" in out and "先頭 3財布を読む" in out
+    assert "候補の条件ごとに残った数: 損益プラス 4 → 資金100〜10,000ドル 3 →" in out
     assert "全部の条件を通過 1" in out and "取引50回以上 2" in out and "中央値2000ドル以下 2" in out
     assert "取引20回(基準50回以上)" in out and "取引額の中央値" in out
     assert conn.execute("SELECT COUNT(*) FROM wallet_scans").fetchone()[0] == 0

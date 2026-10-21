@@ -11,7 +11,7 @@ LAZY = "0x" + "c" * 40
 
 def setup_wallets(exchange):
     start = now_ms() - 20 * DAY
-    exchange.board = [board_row(GOOD), board_row(WHALE, month_pnl=90_000), board_row(LAZY, month_pnl=500),
+    exchange.board = [board_row(GOOD), board_row(WHALE, month_pnl=9_000), board_row(LAZY, month_pnl=500),
                       board_row("0x" + "d" * 40, month_pnl=-100)]
     exchange.fills = {GOOD: trader_fills("BTC", start, 60),
                       WHALE: trader_fills("BTC", start, 60, notional=50_000),

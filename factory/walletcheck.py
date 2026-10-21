@@ -78,12 +78,11 @@ def report(rows: list[Row]) -> list[str]:
 
 
 def run(reader: Reader, n: int) -> str:
-    cfg = config.load_config()["explore"]
     board = reader.leaderboard()
-    rows = explore.candidates(board)
-    low, high = cfg["candidate_account_usd"]
+    steps: list[tuple[str, int]] = []
+    rows = explore.candidates(board, steps=steps)
     head = (f"探索の絞り込みの診断(開発用・記録は残さない)\n"
-            f"順位表 {len(board)}財布のうち候補 {len(rows)}財布(資金{low:,}〜{high:,}ドル・"
-            f"30日の取引量{cfg['candidate_min_volume_usd']:,}ドル以上・損益プラス)。"
-            f"run-daily と同じ損益の順に先頭 {min(n, len(rows))}財布を読む")
+            f"順位表 {len(board)}財布のうち候補 {len(rows)}財布。"
+            f"run-daily と同じ損益の順に先頭 {min(n, len(rows))}財布を読む\n"
+            f"  候補の条件ごとに残った数: " + " → ".join(f"{name} {k}" for name, k in steps))
     return "\n".join([head, *report(inspect(reader, rows[:n]))])
