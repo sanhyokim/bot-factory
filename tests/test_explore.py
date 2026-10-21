@@ -176,25 +176,47 @@ def test_scan_reports_progress_every_50_wallets(conn, exchange, reader):
     assert seen == [(50, 120), (100, 120)]
 
 
+def test_candidates_are_wallets_trading_at_a_copyable_size():
+    whale = dict(address="0xw", account_value=50_000_000, month_pnl=9_000_000, month_roi=0.2,
+                 month_volume=900_000_000)
+    small = dict(address="0xs", account_value=3_000, month_pnl=800, month_roi=0.3, month_volume=200_000)
+    better = dict(address="0xb", account_value=9_000, month_pnl=2_500, month_roi=0.4, month_volume=150_000)
+    idle = dict(address="0xi", account_value=5_000, month_pnl=900, month_roi=0.2, month_volume=2_000)
+    losing = dict(address="0xl", account_value=5_000, month_pnl=-50, month_roi=-0.01, month_volume=90_000)
+    empty = dict(address="0xe", account_value=20, month_pnl=500, month_roi=25.0, month_volume=60_000)
+    rows = explore.candidates([whale, small, better, idle, losing, empty])
+    assert [r["address"] for r in rows] == ["0xb", "0xs"]       # 損益の順
+
+
+def test_scan_checks_up_to_300_wallets_a_day_skipping_recent_ones(conn, exchange, reader, monkeypatch):
+    from factory import config
+
+    cfg = config.load_config()
+    monkeypatch.setattr(config, "load_config", lambda: {**cfg, "explore": {**cfg["explore"], "top_wallets": 3}})
+    addrs = [f"0x{i:040x}" for i in range(6)]
+    exchange.board = [board_row(a, month_pnl=1000 - i) for i, a in enumerate(addrs)]
+    recent = "2099-01-01T00:00:00+09:00"
+    for a in addrs[:2]:
+        conn.execute("INSERT INTO wallet_scans(address, scanned_at, method) VALUES (?, ?, ?)",
+                     (a, recent, explore.SCAN_METHOD))
+    rep = explore.scan(conn, Market(conn, reader))
+    assert rep.skipped_recent == 2 and rep.checked == 3       # 上位2件を飛ばし、次の3件を調べる
+    done = {r[0] for r in conn.execute("SELECT address FROM wallet_scans")}
+    assert done == set(addrs[:5])
+
+
 def test_explore_check_counts_each_filter_without_recording(conn, exchange, reader):
     from factory import walletcheck
 
     start = now_ms() - 20 * DAY
     good, few, big = "0x" + "a" * 40, "0x" + "b" * 40, "0x" + "c" * 40
-    exchange.board = [board_row(good, month_pnl=3000), board_row(few, month_pnl=2000), board_row(big, month_pnl=1000)]
+    whale = "0x" + "d" * 40
+    exchange.board = [board_row(good, month_pnl=3000), board_row(few, month_pnl=2000),
+                      board_row(big, month_pnl=1000), board_row(whale, account_value=5e7, month_pnl=9e6)]
     exchange.fills = {good: trader_fills("BTC", start, 60), few: trader_fills("BTC", start, 20),
                       big: trader_fills("BTC", start, 60, notional=5000)}
-    out = walletcheck.run(reader, 2)
-    assert "全部の条件を通過 1" in out and "取引50回以上 1" in out
-    assert "取引20回(基準50回以上)" in out and "前の数え方で保有がずれた財布 0" in out
-    assert "[参考: 30日の利益率の順で上位(上と重ならない財布)]" in out and "中央値" in out
+    out = walletcheck.run(reader, 30)
+    assert "順位表 4財布のうち候補 3財布" in out and "先頭 3財布を読む" in out
+    assert "全部の条件を通過 1" in out and "取引50回以上 2" in out and "中央値2000ドル以下 2" in out
+    assert "取引20回(基準50回以上)" in out and "取引額の中央値" in out
     assert conn.execute("SELECT COUNT(*) FROM wallet_scans").fetchone()[0] == 0
-
-
-def test_old_way_of_counting_drifts_when_same_time_fills_come_reversed():
-    from factory import walletcheck
-
-    fills = [fill(10, "B", 1.0, 101, start=1.0), fill(10, "B", 1.0, 100, start=0.0),
-             fill(20, "A", 2.0, 110, 20, start=2.0)]
-    assert walletcheck.naive_drift(fills) == 2       # 最初の約定の保有から足し引きすると、以後ずっとずれる
-    assert len(explore.round_trips(fills)) == 1

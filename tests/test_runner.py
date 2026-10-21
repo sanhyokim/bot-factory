@@ -22,7 +22,7 @@ def test_day_one_moves_an_idea_from_registration_to_paper(conn, fake_ai, exchang
     setup_wallets(exchange)
     lines = run_daily(reader=reader, wait_minutes=0, out=lambda s: None)
     text = "\n".join(lines)
-    assert "[探索] 順位表 3財布" in text and "絞り込み通過 1" in text, text
+    assert "[探索] 順位表の候補 3財布" in text and "絞り込み通過 1" in text, text
     # 3つの仮説: 1つは継続、1つは手数料負け、1つは取引所にない銘柄
     ideas = {r["summary"][:6]: r for r in conn.execute("SELECT * FROM ideas")}
     assert len(ideas) == 3

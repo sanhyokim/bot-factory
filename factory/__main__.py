@@ -59,8 +59,8 @@ def main(argv: list[str] | None = None) -> int:
     ff.add_argument("path", help="例: bots/sample_breakout")
     ff.add_argument("--days", type=int, default=30)
 
-    wc = sub.add_parser("explore-check", help="順位表の財布を少し読み、探索の絞り込みで何件落ちるかを見る(開発用)")
-    wc.add_argument("--wallets", type=int, default=15, help="損益の順・利益率の順のそれぞれで読む財布の数")
+    wc = sub.add_parser("explore-check", help="run-daily が読む順に候補の財布を少し読み、探索の絞り込みで何件落ちるかを見る(開発用)")
+    wc.add_argument("--wallets", type=int, default=30, help="読む財布の数")
 
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
     rd = sub.add_parser("run-daily", help="工場を1周させる(探索〜実装、paper評価・反証)")

@@ -205,25 +205,37 @@ def _reason_key(reason: str) -> str:
     return reason.split("(")[0].rstrip("0123456789+-.ドル回%").strip() or reason
 
 
+def candidates(board: list[dict]) -> list[dict]:
+    """順位表から、真似できる大きさで取引していそうな財布を選び、30日の損益の順に並べる(SPEC 5.1 の1)。
+
+    順位表の損益の上位は資金数百万〜数億ドルの財布と高頻度の取引ばかりで、取引額の中央値2000ドル以下(5.1 の3)を
+    満たす財布が1件もなかった(2026-10-20 の診断)。そこで先に順位表の数字(資金・30日の取引量)で候補を絞る。
+    """
+    cfg = config.load_config()["explore"]
+    low, high = cfg["candidate_account_usd"]
+    rows = [r for r in board if r["month_pnl"] > 0 and low <= r["account_value"] <= high
+            and r["month_volume"] >= cfg["candidate_min_volume_usd"]]
+    return sorted(rows, key=lambda r: -r["month_pnl"])
+
+
 def scan(conn: sqlite3.Connection, market: Market, *, progress=None) -> ScanReport:
-    """順位表から財布を取り、絞り込みを通った財布を最大30件返す(AIは使わない)。
-    progress(読んだ数, 全体の数) を渡すと、50財布ごとに呼ぶ(読み終わるまで1時間以上かかることがあるため)。"""
+    """候補の財布を損益の順に、7日以内に調べた財布は飛ばして1日に最大300件調べ、
+    絞り込みを通った財布を最大30件返す(AIは使わない)。
+    progress(調べた数, 調べる上限) を渡すと、50財布ごとに呼ぶ(読み終わるまで時間がかかることがあるため)。"""
     cfg = config.load_config()["explore"]
     reader = market.reader
     now = market.now()
     start = now - cfg["days"] * DAY_MS
-    rows = sorted((r for r in reader.leaderboard() if r["month_pnl"] > 0), key=lambda r: -r["month_pnl"])
-    rows = rows[:cfg["top_wallets"]]
+    rows = candidates(reader.leaderboard())
+    limit = min(cfg["top_wallets"], len(rows))
     perps = set(market.size_decimals())
     cutoff = (now_jst() - timedelta(days=cfg["rescan_days"])).isoformat(timespec="seconds")
     recent = {r[0] for r in conn.execute("SELECT address FROM wallet_scans WHERE scanned_at >= ? AND method = ?",
                                          (cutoff, SCAN_METHOD))}
     rep = ScanReport(listed=len(rows))
-    for i, r in enumerate(rows):
-        if len(rep.passed) >= cfg["max_wallets"]:
+    for r in rows:
+        if len(rep.passed) >= cfg["max_wallets"] or rep.checked >= limit:
             break
-        if progress and i and i % 50 == 0:
-            progress(i, len(rows))
         addr = r["address"]
         if addr in recent:
             rep.skipped_recent += 1
@@ -241,6 +253,8 @@ def scan(conn: sqlite3.Connection, market: Market, *, progress=None) -> ScanRepo
                      (addr, now_jst().isoformat(timespec="seconds"), SCAN_METHOD))
         conn.commit()
         rep.checked += 1
+        if progress and rep.checked % 50 == 0 and rep.checked < limit:
+            progress(rep.checked, limit)
         if fills is None:
             rep.reasons[why] = rep.reasons.get(why, 0) + 1
             continue
