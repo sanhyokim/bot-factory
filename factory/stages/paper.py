@@ -147,12 +147,12 @@ def _jst(ms: int) -> str:
 
 
 def save_trades(conn: sqlite3.Connection, bot_id: str, trades: list[SimTrade], kind: str = "paper") -> None:
-    """取引記録(SPEC 4.4)に書く。日時は日本時間。"""
+    """取引記録(SPEC 4.4)に書く。日時は日本時間。資金調達料は受け取りがプラス。"""
     conn.executemany(
         """INSERT INTO trades(bot_id, kind, entry_at, entry_price, entry_qty, exit_at, exit_price, exit_qty,
-               fee_usd, funding_usd, net_pnl_usd) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               fee_usd, slippage_usd, funding_usd, net_pnl_usd) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         [(bot_id, kind, _jst(t.entry_t), t.entry_price, t.qty, _jst(t.exit_t), t.exit_price, t.qty,
-          t.fee_usd, t.funding_usd, t.net_usd) for t in trades],
+          t.fee_usd, t.slippage_usd, t.funding_usd, t.net_usd) for t in trades],
     )
     conn.commit()
 
@@ -186,9 +186,9 @@ def replace_trades(conn: sqlite3.Connection, bot_id: str, trades: list[SimTrade]
 
 
 def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
-    from .. import ai_gateway, db, memo
-    from ..botbase import load_bot
-    from ..engine import simulate
+    """価格は銘柄ごとに1本の受け取り口(hyperliquid/feed.py)から読む。BOTごとに取引所へは行かない(SPEC 3.1・5.5 の2)。"""
+    from .. import ai_gateway, botrun, db, memo
+    from ..hyperliquid.feed import Feeds
     from ..hyperliquid.reader import INTERVAL_MS, ReaderError
     from . import implement, refute
 
@@ -198,6 +198,10 @@ def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
     bots = conn.execute(
         """SELECT b.id AS bot_id, b.code_path, b.attempts, b.paper_start_ms, r.*
            FROM bots b JOIN rules r ON r.id = b.rule_id WHERE b.status = 'paper評価中' ORDER BY b.id""").fetchall()
+    feeds = Feeds(market)
+    for b in bots:      # 先に全BOTの要る分を伝え、銘柄ごとに1回で取る
+        step = INTERVAL_MS[b["timeframe"]]
+        feeds.want(b["symbol"], b["timeframe"], b["paper_start_ms"] - pcfg["warmup_bars"] * step)
     for b in bots:
         bot_id, idea_id, step = b["bot_id"], b["id"], INTERVAL_MS[b["timeframe"]]
         start, now = b["paper_start_ms"], market.now()
@@ -205,9 +209,11 @@ def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
             rep.waiting.append(bot_id)
             continue
         path = config.ROOT / b["code_path"]
+        feed = feeds.get(b["symbol"])
         try:
-            candles = market.candles(b["symbol"], b["timeframe"], start - pcfg["warmup_bars"] * step, now)
-            funding = market.funding(b["symbol"], start - DAY_MS, now)
+            warm = start - pcfg["warmup_bars"] * step
+            candles = feed.candles(b["timeframe"], warm, now)
+            funding = feed.funding(warm, now)
             decimals = market.size_decimals()[b["symbol"]]
             last_closed = now - now % step - step
             if not candles or candles[-1].t < last_closed - step:
@@ -217,10 +223,10 @@ def run_bots(conn: sqlite3.Connection, market) -> DailyReport:
             rep.held.append(bot_id)
             continue
         try:
-            sim = simulate(load_bot(path), candles, funding, amount_usd=pcfg["amount_usd"],
-                           fee_rate=hl["taker_fee_rate"], size_decimals=decimals,
-                           min_order_usd=hl["min_order_usd"], interval_ms=step, trade_from=start,
-                           slippage_rate=hl["slippage_pct"] / 100)
+            sim = botrun.load(path).simulate(candles, funding, amount_usd=pcfg["amount_usd"],
+                                             fee_rate=hl["taker_fee_rate"], size_decimals=decimals,
+                                             min_order_usd=hl["min_order_usd"], trade_from=start,
+                                             slippage_rate=hl["slippage_pct"] / 100)
         except Exception as e:  # BOTの異常終了は修理へ(SPEC 5.7)
             failure = f"paper評価で例外: {type(e).__name__}: {e}"
             try:

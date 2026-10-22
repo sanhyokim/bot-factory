@@ -1,6 +1,7 @@
 """案・BOT・記録の型と、仕様で固定された語の一覧(SPEC 4章・6章)。"""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -19,8 +20,17 @@ MEMO_STAGES = ["探索", "調査", "新ロジック開発", "実装", "paper評�
 # 判定(SPEC 4.1・5章)
 VERDICTS = ["案登録", "待機", "継続", "保留", "見送り", "完了", "仮説を支持", "修理", "未対応"]
 
-# 出どころ(SPEC 4.1)
-SOURCES = ["wallet", "market"]
+# 出どころ(SPEC 4.1): 入口1 財布分析 / 入口2 資金調達料の歪み
+SOURCES = ["wallet", "funding"]
+
+# 売買ルールの型(SPEC 0章・4.2)
+PRICE = "値動き"
+DISTORTION = "歪み"
+TYPES = [PRICE, DISTORTION]
+
+# BOTの札(SPEC 4.3)。新ロジック開発でAIに選ばせる
+CONTINUITY = ["一回きり", "常にある"]
+COMPETITION = ["競争あり", "競争なし"]
 
 # 札(SPEC 6.2)。固定。増やす時はボスの承認
 TAGS = [
@@ -44,6 +54,7 @@ class Idea:
     summary: str
     hypothesis: str = ""
     source: str = "wallet"
+    type: str = PRICE
     wallet: str | None = None
     # 登録前照合のキー(SPEC 6.3 用途1: 銘柄+時間の単位+入る条件の種類)
     symbol: str = ""
@@ -69,3 +80,23 @@ class Memo:
     timeframe: str = ""
     entry_kind: str = ""
     source: str = ""
+    type: str = PRICE
+    match_key: str = ""
+
+
+def match_key(type_: str, symbol: str, entry_kind: str, entry_params: str | None) -> str:
+    """登録前照合のキー(SPEC 6.3 用途1): 型+銘柄+入る条件の種類+数字(n=本数、x=%か倍率)。
+
+    文字一致で比べるので、前後の空白と大文字小文字の違いだけをそろえ、数字は決まった書き方にする。
+    """
+    try:
+        p = json.loads(entry_params or "{}")
+    except ValueError:
+        p = {}
+    if not isinstance(p, dict):
+        p = {}
+    n, x = p.get("n"), p.get("x")
+    n_text = str(int(n)) if isinstance(n, (int, float)) else ""
+    x_text = f"{float(x):g}" if isinstance(x, (int, float)) else ""
+    return "|".join([(type_ or PRICE).strip(), (symbol or "").strip().casefold(),
+                     (entry_kind or "").strip().casefold(), f"n={n_text}", f"x={x_text}"])

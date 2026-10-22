@@ -5,7 +5,7 @@ import argparse
 import sys
 
 from . import ai_gateway, config, db, memo
-from .models import Idea, Memo
+from .models import SOURCES, TYPES, Idea, Memo
 
 SAMPLE_IDEAS = [
     ("BTC", "1時間", "高値抜け", "BTCで直近20本の高値を上抜けたら買い、+1.5%で確定・−0.8%で損切り"),
@@ -34,7 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--entry-kind", required=True, help="入る条件の種類(例: 高値抜け/平均回帰/資金調達料)")
     a.add_argument("--summary", required=True)
     a.add_argument("--hypothesis", default="")
-    a.add_argument("--source", default="wallet", choices=["wallet", "market"])
+    a.add_argument("--source", default="wallet", choices=SOURCES)
+    a.add_argument("--type", default=TYPES[0], choices=TYPES, help="型(値動き/歪み)")
     a.add_argument("--wallet")
 
     m = sub.add_parser("add-memo", help="否決メモを1件残す")
@@ -46,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--symbol", default="")
     m.add_argument("--timeframe", default="")
     m.add_argument("--entry-kind", default="")
+    m.add_argument("--type", default=TYPES[0], choices=TYPES)
 
     q = sub.add_parser("ask", help="AI窓口で1問送る(費用帳簿に1行つく)")
     q.add_argument("prompt")
@@ -62,7 +64,11 @@ def main(argv: list[str] | None = None) -> int:
     wc = sub.add_parser("explore-check", help="run-daily が読む順に候補の財布を少し読み、探索の絞り込みで何件落ちるかを見る(開発用)")
     wc.add_argument("--wallets", type=int, default=30, help="読む財布の数")
 
+    sub.add_parser("funding-check", help="探索の入口2が今どの銘柄を案にするかを見る(登録はしない。開発用)")
+
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
+    sub.add_parser("feed", help="価格の受け取り口: 動いているBOTの銘柄の価格を決まった間隔で取り込む(見張り役が起こす)")
+    sub.add_parser("watchdog", help="見張り役: 画面と価格の受け取り口を起こし、落ちたら再起動する")
     rd = sub.add_parser("run-daily", help="工場を1周させる(探索〜実装、paper評価・反証)")
     rd.add_argument("--wait-minutes", type=float, help="探索のAIの答えを待つ分数(既定は config.yaml)")
     rd.add_argument("--skip-explore", action="store_true", help="探索を行わない(順位表を読まない)")
@@ -71,6 +77,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "dashboard":
         from .dashboard.app import serve
         serve()
+        return 0
+    if args.cmd == "feed":
+        from . import logs
+        from .hyperliquid import feed
+        feed.run_forever(interval_seconds=config.load_config()["feed"]["interval_minutes"] * 60,
+                         log=lambda text: logs.write("feed", text))
+        return 0
+    if args.cmd == "watchdog":
+        from . import watchdog
+        print("見張り役を始めた。止める時は Ctrl+C(見張っているプロセスも止まる)")
+        try:
+            watchdog.from_config().run_forever(config.load_config()["watchdog"]["check_seconds"])
+        except KeyboardInterrupt:
+            pass
+        return 0
+    if args.cmd == "funding-check":
+        from .hyperliquid.reader import Reader, ReaderError
+        from .market import Market
+        from .stages import explore_funding
+        conn = db.connect()
+        try:
+            rep = explore_funding.find(conn, Market(conn, Reader()),
+                                       skip=explore_funding.recent_symbols(
+                                           conn, config.load_config()["explore_funding"]["reregister_days"]))
+            print("\n".join(explore_funding.describe(rep)))
+        except ReaderError as e:
+            print(f"エラー: {e}", file=sys.stderr)
+            return 1
+        finally:
+            conn.close()
         return 0
     if args.cmd == "run-daily":
         from .runner import run_daily
@@ -99,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(idea_id or f"除外 {memo_id}", summary)
         elif args.cmd == "add-idea":
             idea_id, memo_id = memo.register_idea(conn, Idea(
-                summary=args.summary, hypothesis=args.hypothesis, source=args.source,
+                summary=args.summary, hypothesis=args.hypothesis, source=args.source, type=args.type,
                 wallet=args.wallet, symbol=args.symbol, timeframe=args.timeframe,
                 entry_kind=args.entry_kind))
             print(f"登録 {idea_id}" if idea_id else f"照合で除外(否決メモ {memo_id})")
@@ -109,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 memo_id = memo.add_memo(conn, Memo(
                     stage=args.stage, tag=args.tag, reason=args.reason, idea_summary=args.summary,
-                    symbol=args.symbol, timeframe=args.timeframe, entry_kind=args.entry_kind))
+                    symbol=args.symbol, timeframe=args.timeframe, entry_kind=args.entry_kind, type=args.type))
             print(f"否決メモ {memo_id}")
         elif args.cmd == "ask":
             r = ai_gateway.ask(conn, args.stage, args.prompt)
@@ -125,12 +161,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _bot_command(args) -> int:
-    from . import fastforward
-    from .botbase import BotRejected, load_bot
+    from . import botrun, fastforward
+    from .botbase import BotRejected
     from .hyperliquid.reader import Reader, ReaderError
 
     try:
-        bot = load_bot(args.path)
+        bot = botrun.load(args.path)
         print(f"静的検査: OK({args.path})")
         data = fastforward.fetch(Reader(), bot, args.days)
         out = fastforward.run(bot, data)

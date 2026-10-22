@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block head %}<meta http-equiv="refresh" content="{{ refresh }}">{% endblock %}
 {% block body %}
-{% if gates %}<div class="banner">要判断が {{ gates|length }} 件あります</div>{% endif %}
-<h1>bot-factory <span class="muted">{{ now }} 更新 / 今日のAI代 ${{ '%.4f'|format(costs.today) }} ・今月 ${{ '%.4f'|format(costs.month) }}</span></h1>
+{% set n_alerts = gates|length + given_up|length %}
+{% if n_alerts %}<div class="banner">要判断が {{ n_alerts }} 件あります</div>{% endif %}
+<h1>bot-factory <span class="muted">{{ now }} 更新 / 今日のAI代 ${{ '%.4f'|format(costs.today) }} ・今月 ${{ '%.4f'|format(costs.month) }} ・<a href="/logs">ログ</a></span></h1>
 
 <section class="alert" id="gates">
   <h2>1. 要判断</h2>
@@ -15,16 +16,27 @@
         <span class="muted">(ボタンは段階4で有効化)</span></td></tr>
     {% endfor %}
   </table>
-  {% else %}<p class="muted">待っているBOTはありません。</p>{% endif %}
+  {% endif %}
+  {% if given_up %}
+  <table>
+    <tr><th>見張り役が再起動をやめたプロセス</th><th>日時</th><th>理由</th></tr>
+    {% for w in given_up %}
+    <tr><td>{{ watch.labels.get(w.process, w.process) }}</td><td>{{ w.created_at[:16] }}</td><td>{{ w.detail }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="muted">原因を直してから、見張り役(python -m factory watchdog)を起動し直すと、もう一度見張る。</p>
+  {% endif %}
+  {% if not n_alerts %}<p class="muted">待っているBOT・止まったプロセスはありません。</p>{% endif %}
 </section>
 
 <section id="stages">
-  <h2>2. 工程別の集計</h2>
+  <h2>2. 工程別の集計{% if filters.type %}({{ filters.type }}型){% endif %}</h2>
+  <p class="muted">型で絞る: <a href="/">すべて</a>{% for t in types %} ・<a href="/?type={{ t|urlencode }}#stages">{{ t }}</a>{% endfor %}</p>
   {% if counts %}
   <table>
     <tr><th>工程 / 判定</th><th>件数</th><th style="width:50%"></th></tr>
     {% for r in counts %}
-    <tr><td><a href="/?stage={{ r.stage|urlencode }}&verdict={{ r.verdict|urlencode }}">{{ r.stage }} / {{ r.verdict }}</a></td>
+    <tr><td><a href="/?stage={{ r.stage|urlencode }}&verdict={{ r.verdict|urlencode }}&type={{ filters.type|urlencode }}">{{ r.stage }} / {{ r.verdict }}</a></td>
       <td>{{ r.n }}</td><td><div class="bar" style="width: {{ (r.n / max_n * 100)|round(1) }}%"></div></td></tr>
     {% endfor %}
   </table>
@@ -38,12 +50,20 @@
       {% for v in verdicts %}<option {% if filters.verdict == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
     <select name="tag"><option value="">札: すべて</option>
       {% for t in tags %}<option {% if filters.tag == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+    <select name="type"><option value="">型: すべて</option>
+      {% for t in types %}<option {% if filters.type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+    <select name="continuity"><option value="">継続性: すべて</option>
+      {% for t in continuities %}<option {% if filters.continuity == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+    <select name="competition"><option value="">競争: すべて</option>
+      {% for t in competitions %}<option {% if filters.competition == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+    <select name="made_by"><option value="">作ったAI: すべて</option>
+      {% for t in models %}<option value="{{ t }}" {% if filters.made_by == t %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}</select>
     <button>絞り込む</button> <a href="/">解除</a>
   </form>
   <table>
-    <tr><th>案ID</th><th>作成</th><th>銘柄</th><th>時間</th><th>入り方</th><th>工程</th><th>判定</th><th>要約</th></tr>
+    <tr><th>案ID</th><th>作成</th><th>型</th><th>銘柄</th><th>時間</th><th>入り方</th><th>工程</th><th>判定</th><th>要約</th></tr>
     {% for i in ideas %}
-    <tr><td><a href="/ideas/{{ i.id }}">{{ i.id }}</a></td><td>{{ i.created_at[:16] }}</td><td>{{ i.symbol }}</td><td>{{ i.timeframe }}</td>
+    <tr><td><a href="/ideas/{{ i.id }}">{{ i.id }}</a></td><td>{{ i.created_at[:16] }}</td><td>{{ i.type }}</td><td>{{ i.symbol }}</td><td>{{ i.timeframe }}</td>
       <td>{{ i.entry_kind }}</td><td>{{ i.stage }}</td><td>{{ i.verdict }}</td><td>{{ i.summary }}</td></tr>
     {% endfor %}
   </table>
@@ -53,52 +73,65 @@
   <h2>4. paper評価中</h2>
   {% if paper_bots %}
   <table>
-    <tr><th>BOT</th><th>銘柄</th><th>時間</th><th>経過日数</th><th>取引回数</th><th>平均純利益</th><th>純利益の合計</th><th>連敗(今/最大)</th><th>修理</th></tr>
+    <tr><th>BOT</th><th>型</th><th>銘柄</th><th>時間</th><th>経過日数</th><th>取引回数</th><th>平均純利益</th><th>純利益の合計</th><th>連敗(今/最大)</th><th>修理</th><th>土台の版</th></tr>
     {% for b in paper_bots %}
     <tr><td><a href="/ideas/{{ b.idea }}">{{ b.id }}</a>{% if b.status != 'paper評価中' %} <span class="muted">{{ b.status }}</span>{% endif %}</td>
-      <td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td>
+      <td>{{ b.type }}</td><td>{{ b.symbol }}</td><td>{{ b.timeframe }}</td>
       <td>{{ '%.1f'|format(b.days) if b.days >= 0 else '開始待ち' }}</td><td>{{ b.n }}</td>
       <td>{{ '$%+.2f'|format(b.avg) if b.avg is not none else '—' }}</td><td>{{ '$%+.2f'|format(b.total) }}</td>
-      <td>{{ b.streak }} / {{ b.worst }}</td><td>{{ b.repairs }}</td></tr>
+      <td>{{ b.streak }} / {{ b.worst }}</td><td>{{ b.repairs }}</td><td>{{ b.base_version }}</td></tr>
     {% endfor %}
   </table>
-  <p class="muted">完走は14日以上かつ30回以上。連敗8回・落ち込み40ドル超・72時間入らない、のどれかで不合格。</p>
+  <p class="muted">完走は14日以上かつ30回以上。連敗8回・落ち込み40ドル超・72時間入らない、のどれかで不合格。土台の版0は段階3bより前に作ったBOT(最長保有なし)。</p>
   {% else %}<p class="muted">試運転中のBOTはありません。</p>{% endif %}
 </section>
 
 <section id="memos">
   <h2>5. 否決メモ</h2>
-  <h3 style="font-size:14px">直近7日の札</h3>
-  {% if tag_counts %}
-  <table>
-    <tr><th>札</th><th>件数</th></tr>
-    {% for t in tag_counts %}<tr><td><a href="/?tag={{ t.tag|urlencode }}#memos">{{ t.tag }}</a></td><td>{{ t.n }}</td></tr>{% endfor %}
-  </table>
-  {% else %}<p class="muted">直近7日のメモはありません。</p>{% endif %}
+  <div class="cols">
+  {% for t in types %}
+    <div>
+      <h3 style="font-size:14px">{{ t }}型: 直近7日の札</h3>
+      {% if memo_panel.tags[t] %}
+      <table>
+        <tr><th>札</th><th>件数</th></tr>
+        {% for r in memo_panel.tags[t] %}<tr><td><a href="/?tag={{ r.tag|urlencode }}&type={{ t|urlencode }}#memos">{{ r.tag }}</a></td><td>{{ r.n }}</td></tr>{% endfor %}
+      </table>
+      {% else %}<p class="muted">直近7日のメモはありません。</p>{% endif %}
+      {% if memo_panel.tuning.get(t) %}<p class="muted">週1回の棚卸し({{ memo_panel.tuning[t].created_at[:10] }}): {{ memo_panel.tuning[t].note }}</p>{% endif %}
+    </div>
+  {% endfor %}
+  </div>
+  <p class="muted">まとめ(案の要約が同じメモを1件に): {{ memo_panel.merged.targets }}件にまとめた(元のメモ {{ memo_panel.merged.originals }}件)。まとめたメモも札の集計では1件ずつ数える。</p>
 
-  {% if tuning %}<p class="muted">週1回の棚卸し({{ tuning.created_at[:10] }}): {{ tuning.note }}</p>{% endif %}
+  <div class="cols">
+  {% for t in types %}
+    <div>
+      <h3 style="font-size:14px">{{ t }}型: 週次3指標</h3>
+      <table>
+        <tr><th>週(月曜〜)</th><th>照合で除外</th><th>案登録</th><th>反証合格</th><th>合格率</th></tr>
+        {% for w in memo_panel.weekly[t] %}
+        <tr><td>{{ w.week }}</td><td>{{ w.excluded }}</td><td>{{ w.registered }}</td><td>{{ w.passed }}</td>
+          <td>{{ '%.1f%%'|format(w.pass_rate * 100) if w.pass_rate is not none else '—' }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  {% endfor %}
+  </div>
 
-  <h3 style="font-size:14px">週次3指標</h3>
+  <h3 style="font-size:14px">メモ{% if filters.tag %}(札: {{ filters.tag }}){% endif %}{% if filters.type %}({{ filters.type }}型){% endif %}</h3>
   <table>
-    <tr><th>週(月曜〜)</th><th>照合で除外</th><th>案登録</th><th>反証合格</th><th>合格率</th></tr>
-    {% for w in weekly %}
-    <tr><td>{{ w.week }}</td><td>{{ w.excluded }}</td><td>{{ w.registered }}</td><td>{{ w.passed }}</td>
-      <td>{{ '%.1f%%'|format(w.pass_rate * 100) if w.pass_rate is not none else '—' }}</td></tr>
-    {% endfor %}
-  </table>
-
-  <h3 style="font-size:14px">メモ{% if filters.tag %}(札: {{ filters.tag }}){% endif %}</h3>
-  <table>
-    <tr><th>メモID</th><th>落ちた日</th><th>工程</th><th>札</th><th>一言の理由</th><th>案の要約</th></tr>
+    <tr><th>メモID</th><th>落ちた日</th><th>工程</th><th>型</th><th>札</th><th>一言の理由</th><th>案の要約</th><th>まとめ</th></tr>
     {% for m in memos %}
-    <tr><td>{{ m.id }}</td><td>{{ m.created_at[:10] }}</td><td>{{ m.stage }}</td><td>{{ m.tag }}</td><td>{{ m.reason }}</td>
-      <td>{% if m.idea_id %}<a href="/ideas/{{ m.idea_id }}">{{ m.idea_id }}</a> {% endif %}{{ m.idea_summary }}</td></tr>
+    <tr><td>{{ m.id }}</td><td>{{ m.created_at[:10] }}</td><td>{{ m.stage }}</td><td>{{ m.type }}</td><td>{{ m.tag }}</td><td>{{ m.reason }}</td>
+      <td>{% if m.idea_id %}<a href="/ideas/{{ m.idea_id }}">{{ m.idea_id }}</a> {% endif %}{{ m.idea_summary }}</td>
+      <td>{% if m.merged_into %}<span class="muted">→ {{ m.merged_into }}</span>{% elif m.merge_count > 1 %}{{ m.merge_count }}件{% endif %}</td></tr>
     {% endfor %}
   </table>
 </section>
 
 <section id="costs">
-  <h2>6. 費用</h2>
+  <h2>6. 費用と稼働</h2>
   <p>今日 <b>${{ '%.4f'|format(costs.today) }}</b> ・今月 <b>${{ '%.4f'|format(costs.month) }}</b> ・クレジット残高の見込み <b>${{ '%.2f'|format(costs.credit_left) }}</b>
     <span class="muted">(付与額からAPIで使った額を引いた目安)</span></p>
   {% if costs.by_stage %}
@@ -114,8 +147,47 @@
     {% for r in costs.top %}<tr><td>{{ r.who }}</td><td>{{ r.n }}</td><td>${{ '%.4f'|format(r.usd) }}</td></tr>{% endfor %}
   </table>
   {% endif %}
+
+  <h3 style="font-size:14px">AI別の黒字集計</h3>
+  {% if scoreboard %}
+  <table>
+    <tr><th>作ったAI</th><th>実装した本数</th><th>paper評価に合格</th><th>本番で黒字</th><th>本番の純利益</th><th>かかったAI代</th><th>打率</th><th>実装不良</th></tr>
+    {% for r in scoreboard %}
+    <tr><td><a href="/?made_by={{ r.model|lower|urlencode }}#stages">{{ r.model }}</a></td><td>{{ r.implemented }}</td><td>{{ r.passed }}</td><td>{{ r.profitable }}</td>
+      <td>${{ '%+.2f'|format(r.live_net) }}</td><td>${{ '%.4f'|format(r.cost) }}</td>
+      <td>{{ '%.1f%%'|format(r.rate * 100) if r.rate is not none else '—' }}</td><td>{{ r.broken }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="muted">実装した本数は自動テストを通って paper評価を始めたBOT。打率は 本番で黒字の本数 ÷ 実装した本数。AI代はそのBOTと元の案にかかった分。</p>
+  {% else %}<p class="muted">まだBOTがありません。</p>{% endif %}
+
+  <h3 style="font-size:14px">見張り役とデータ窓口</h3>
+  <p>データ窓口(取引所)に断られた回数: 今日 <b>{{ watch.refused_today }}</b>回・直近7日 <b>{{ watch.refused_week }}</b>回</p>
+  {% if watch.events %}
+  <table>
+    <tr><th>日時</th><th>プロセス</th><th>出来事</th><th>詳細</th></tr>
+    {% for e in watch.events %}<tr><td>{{ e.created_at[:16] }}</td><td>{{ watch.labels.get(e.process, e.process) }}</td><td>{{ e.event }}</td><td>{{ e.detail }}</td></tr>{% endfor %}
+  </table>
+  {% else %}<p class="muted">再起動の記録はありません。</p>{% endif %}
+
   <p class="muted">実装したBOT {{ implement.total }}本のうち、修理しても直らなかったもの {{ implement.failed }}本
     {% if implement.rate is not none %}({{ '%.0f'|format(implement.rate * 100) }}%){% endif %}。
     最初の14日でこれが30%を超えたら、実装・修理のAIをOpusに上げるかをボスが決める(SPEC 5.4)。</p>
+</section>
+
+<section id="yields">
+  <h2>7. 札ごとの歩留まり</h2>
+  <div class="cols">
+  {% for name, rows in yields.items() %}
+    <div>
+      <h3 style="font-size:14px">{{ name }}</h3>
+      <table>
+        <tr><th>{{ name }}</th><th>実装した → paper合格 → 本番で黒字</th></tr>
+        {% for r in rows %}<tr><td>{{ r.label }}</td><td>{{ r.implemented }}本 → {{ r.passed }}本 → {{ r.profitable }}本</td></tr>{% endfor %}
+      </table>
+    </div>
+  {% endfor %}
+  </div>
+  <p class="muted">どの種類の案に力を入れるべきかを見る枠。継続性・競争の札は新ロジック開発でAIが選ぶ(段階3bより前のBOTは未設定)。</p>
 </section>
 {% endblock %}

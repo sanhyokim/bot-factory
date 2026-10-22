@@ -11,6 +11,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from .. import ai_gateway
+from ..models import DISTORTION
 
 CANNOT = "直せない"
 CODE_BLOCK = re.compile(r"```(?:python|py)?[ \t]*\r?\n(.*?)```", re.S)
@@ -37,11 +38,22 @@ def extract_code(text: str) -> str | None:
     return None
 
 
+def base_part(rule) -> str:
+    """土台が行う部分の説明(型と、段階3bより前のルールかで違う)。"""
+    keys = rule.keys()
+    hold = rule["max_hold_hours"] if "max_hold_hours" in keys else None
+    hold_text = f"・最長保有 {hold:g}時間" if hold else ""
+    if "type" in keys and rule["type"] == DISTORTION:
+        return (f"(資金調達料 入る ±{rule['funding_x']:g}%/時・出る ±{rule['funding_y']:g}%/時。"
+                f"損切り −{rule['stop_loss_pct']}%{hold_text} は土台が行う)")
+    return f"(利益確定 +{rule['take_profit_pct']}%・損切り −{rule['stop_loss_pct']}%{hold_text} は土台が行う)"
+
+
 def repair(conn: sqlite3.Connection, rule, code: str, failure: str, *, bot_id: str | None,
            idea_id: str | None) -> RepairResult:
     prompt = (f"売買ルール: 銘柄 {rule['symbol']} / 時間の単位 {rule['timeframe']}\n"
               f"入る条件: {rule['entry_condition']}\n出る条件: {rule['exit_condition']}\n"
-              f"(利益確定 +{rule['take_profit_pct']}%・損切り −{rule['stop_loss_pct']}% は土台が行う)\n\n"
+              f"{base_part(rule)}\n\n"
               f"今の strategy.py:\n```python\n{code}\n```\n\n"
               f"テストまたは試運転で次の不具合が出た:\n{failure}\n\n"
               "直した strategy.py の全体を ```python のかたまり1つで答えて。")

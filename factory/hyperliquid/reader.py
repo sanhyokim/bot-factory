@@ -27,7 +27,7 @@ FILLS_PAGE = 2000        # 1回で取れる約定の最大件数
 
 # 取引所の利用量の重さ(1分あたりの上限がある)。(1回の重さ, 返ってきた何件ごとに1足すか)
 WEIGHTS = {"candleSnapshot": (20, 60), "fundingHistory": (20, 20), "userFillsByTime": (20, 20),
-           "meta": (20, 0)}
+           "meta": (20, 0), "metaAndAssetCtxs": (20, 0)}
 
 
 class ReaderError(RuntimeError):
@@ -87,6 +87,7 @@ class Reader:
                                   if weight_per_minute is None else weight_per_minute)
         self._clock, self._sleep = clock, sleep
         self._spent: deque[tuple[float, float]] = deque()
+        self.refusals = 0      # 取引所に断られた回数(429・5xx・つながらない。画面の枠6に出す)
 
     def _throttle(self, weight: float) -> None:
         """直近1分の重さが上限を超えないように待つ。"""
@@ -113,9 +114,16 @@ class Reader:
                 return r.json()
             except (httpx.HTTPError, ValueError) as e:
                 last = e
+                if not isinstance(e, ValueError):
+                    self.refusals += 1
                 if attempt + 1 < self.retries:
                     time.sleep(2 ** attempt)
         raise ReaderError(f"Hyperliquid から取得できなかった: {last}") from last
+
+    def take_refusals(self) -> int:
+        """断られた回数を返して0に戻す(記録したら数え直す)。"""
+        n, self.refusals = self.refusals, 0
+        return n
 
     def info(self, payload: dict):
         base, per = WEIGHTS.get(payload.get("type"), (20, 0))
@@ -164,6 +172,18 @@ class Reader:
     def size_decimals(self) -> dict[str, int]:
         meta = self.info({"type": "meta"})
         return {a["name"]: int(a["szDecimals"]) for a in meta["universe"]}
+
+    # --- 全銘柄の今の状態(探索の入口2) ---
+    def asset_contexts(self) -> list[dict]:
+        """無期限先物の全銘柄。各行に name, day_volume_usd(直近24時間の出来高), funding(今の1時間あたりの率), mark_px。"""
+        meta, ctxs = self.info({"type": "metaAndAssetCtxs"})
+        rows = []
+        for a, c in zip(meta["universe"], ctxs):
+            if a.get("isDelisted"):
+                continue
+            rows.append({"name": a["name"], "day_volume_usd": float(c.get("dayNtlVlm") or 0),
+                         "funding": float(c.get("funding") or 0), "mark_px": float(c.get("markPx") or 0)})
+        return rows
 
     # --- 順位表 ---
     def leaderboard(self) -> list[dict]:

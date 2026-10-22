@@ -1,5 +1,10 @@
 """BOTを価格の上で動かす土台(注文・記録・停止の固定部分。SPEC 5.4・5.5・9章)。
 
+段階3bから、新しいBOTは自分のフォルダにコピーされた土台(bots/<記号>/base.py)で動く(SPEC 5.4 の2)。
+このファイルは、それより前に作ったBOT(土台の版0: bots/<記号>/ に base.py がない)だけを動かす。
+売買の動き(いつ入り・いつ出て・いくらで約定するか)は版0のまま変えない。変えたのは記録の書き方だけ
+(資金調達料を受け取りプラスに、滑りの額を別に記録。SPEC 4.4)。
+
 決まり(strategy.py からは変えられない):
 - レバレッジ1倍: 数量 = 上限額 ÷ 価格。借りて増やすことはしない
 - 同時保有1: 持っている間は新しく入らない
@@ -36,8 +41,9 @@ class SimTrade:
     exit_t: int
     exit_price: float
     fee_usd: float
-    funding_usd: float      # プラスは払った額、マイナスは受け取った額
-    net_usd: float
+    slippage_usd: float     # 滑りで不利になった額(約定の値段に含めてある。純利益からは引き済み)
+    funding_usd: float      # 受け取りはプラス、支払いはマイナス(SPEC 4.4)
+    net_usd: float          # 手数料・滑り・資金調達料を引いた後
     reason: str             # 利益確定 / 損切り / 出る条件 / 保有上限
 
     @property
@@ -64,16 +70,17 @@ def _floor_qty(qty: float, decimals: int) -> float:
     return math.floor(qty * f + 1e-9) / f
 
 
-def _funding_cost(side: str, qty: float, entry_t: int, exit_t: int, funding: list[Funding],
-                  funding_times: list[int], candles: list[Candle], candle_times: list[int]) -> float:
-    """持っていた間に来た資金調達の支払い(プラス=払った)。値段はその時刻の足の終値を使う。"""
-    sign = 1 if side == "long" else -1
-    cost = 0.0
+def _funding_received(side: str, qty: float, entry_t: int, exit_t: int, funding: list[Funding],
+                      funding_times: list[int], candles: list[Candle], candle_times: list[int]) -> float:
+    """持っていた間に来た資金調達(受け取りはプラス)。値段はその時刻の足の終値を使う。
+    率がプラスの時は買いが払い売りが受け取る。"""
+    sign = -1 if side == "long" else 1
+    got = 0.0
     for k in range(bisect.bisect_right(funding_times, entry_t), bisect.bisect_left(funding_times, exit_t)):
         f = funding[k]
         j = max(0, bisect.bisect_right(candle_times, f.t) - 1)
-        cost += sign * qty * candles[j].c * f.rate
-    return cost
+        got += sign * qty * candles[j].c * f.rate
+    return got
 
 
 def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_usd: float,
@@ -91,22 +98,24 @@ def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_
     start = candles[0].t if trade_from is None else max(trade_from, candles[0].t)
     result = SimResult(start_t=start, end_t=candles[-1].t + step, amount_usd=amount_usd)
 
-    pos: dict | None = None          # side, entry_price, entry_t, qty, entry_index
+    pos: dict | None = None          # side, entry_price, raw_entry, entry_t, qty, entry_index
     pending_entry: str | None = None
     pending_exit: str | None = None
     trades_per_day: dict[str, int] = {}
     half_slip = slippage_rate / 2
 
-    def close(i: int, t: int, price: float, reason: str) -> None:
+    def close(i: int, t: int, raw: float, reason: str) -> None:
         nonlocal pos
         p = pos
         sign = 1 if p["side"] == "long" else -1
-        price *= 1 - sign * half_slip          # 出る時の滑り(買いは安く、売りは高く出る)
+        price = raw * (1 - sign * half_slip)          # 出る時の滑り(買いは安く、売りは高く出る)
         gross = sign * (price - p["entry_price"]) * p["qty"]
         fee = fee_rate * p["qty"] * (p["entry_price"] + price)
-        fund = _funding_cost(p["side"], p["qty"], p["entry_t"], t, funding, funding_times, candles, candle_times)
+        slip = p["qty"] * (p["raw_entry"] + raw) * half_slip
+        fund = _funding_received(p["side"], p["qty"], p["entry_t"], t, funding, funding_times, candles,
+                                 candle_times)
         result.trades.append(SimTrade(p["side"], p["entry_t"], p["entry_price"], p["qty"], t, price,
-                                      fee, fund, gross - fee - fund, reason))
+                                      fee, slip, fund, gross - fee + fund, reason))
         pos = None
 
     for i, bar in enumerate(candles):
@@ -118,7 +127,8 @@ def simulate(bot: Bot, candles: list[Candle], funding: list[Funding], *, amount_
             fill = bar.o * (1 + (1 if pending_entry == "long" else -1) * half_slip)   # 入る時の滑り
             qty = _floor_qty(amount_usd * LEVERAGE / fill, size_decimals)
             if qty > 0 and qty * fill >= min_order_usd:
-                pos = {"side": pending_entry, "entry_price": fill, "entry_t": bar.t, "qty": qty, "entry_index": i}
+                pos = {"side": pending_entry, "entry_price": fill, "raw_entry": bar.o, "entry_t": bar.t, "qty": qty,
+                       "entry_index": i}
                 day = jst_date(bar.t)
                 trades_per_day[day] = trades_per_day.get(day, 0) + 1
                 result.max_open_positions = max(result.max_open_positions, 1)

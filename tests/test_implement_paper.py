@@ -15,9 +15,11 @@ def ready_idea(conn, **rule):
                                      side="long", take_profit_pct=1.5, stop_loss_pct=0.8))
     r = {**RULE, **rule}
     conn.execute("""INSERT INTO rules(id, symbol, timeframe, entry_condition, exit_condition, max_amount_usd,
-                        max_trades_per_day, take_profit_pct, stop_loss_pct) VALUES (?,?,?,?,?,200,?,?,?)""",
+                        max_trades_per_day, take_profit_pct, stop_loss_pct, type, max_hold_hours, continuity,
+                        competition) VALUES (?,?,?,?,?,200,?,?,?,'値動き',?,?,?)""",
                  (idea, r["symbol"], r["timeframe"], r["entry_condition"], r["exit_condition"],
-                  r["max_trades_per_day"], r["take_profit_pct"], r["stop_loss_pct"]))
+                  r["max_trades_per_day"], r["take_profit_pct"], r["stop_loss_pct"], r["max_hold_hours"],
+                  r["continuity"], r["competition"]))
     db.set_idea_state(conn, idea, "新ロジック開発", "完了")
     return idea
 

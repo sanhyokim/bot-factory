@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block body %}
+<p><a href="/">← 戻る</a></p>
+<h1>ログ <span class="muted">{{ day }}{% if stage %} / {{ stage }}{% endif %}(新しい順・最大1000行)</span></h1>
+<section>
+  <form class="filters" method="get">
+    <select name="day">
+      {% for d in days %}<option {% if d == day %}selected{% endif %}>{{ d }}</option>{% endfor %}
+      {% if not days %}<option>{{ day }}</option>{% endif %}
+    </select>
+    <select name="stage"><option value="">工程: すべて</option>
+      {% for s in stages %}<option {% if s == stage %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <button>表示</button>
+  </form>
+  {% if rows %}
+  <table>
+    <tr><th>日時</th><th>プロセス</th><th>工程</th><th>内容</th></tr>
+    {% for r in rows %}<tr><td>{{ r.at[11:] }}</td><td>{{ r.process }}</td><td>{{ r.stage }}</td><td style="white-space: pre-wrap">{{ r.text }}</td></tr>{% endfor %}
+  </table>
+  {% else %}<p class="muted">この日のログはありません。</p>{% endif %}
+</section>
+{% endblock %}
