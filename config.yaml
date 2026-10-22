@@ -63,16 +63,29 @@ explore:                    # SPEC 5.1
   daily_input_chars: 5000000  # Haikuに渡す文字数の上限/日
   batch_wait_minutes: 30    # 一括処理の答えを待つ時間。間に合わなければ次の実行で受け取る
 
+explore_funding:            # SPEC 5.1 入口2(資金調達料の歪み)。AIは使わない
+  hours: 24                 # 直近何時間の資金調達料を見るか
+  min_abs_rate_pct: 0.01    # 1時間あたりの資金調達料の絶対値がこれ(%)を超えた時間を数える(年率で約88%)
+  min_hours: 3              # 超えた時間がこれ以上ある銘柄だけ
+  min_day_volume_usd: 1000000   # 直近24時間の出来高の下限(薄い銘柄は滑りが大きい)
+  reregister_days: 3        # 同じ銘柄は3日間は再登録しない
+
 investigate:                # SPEC 5.2
-  fee_multiple: 3           # 値幅が(往復の手数料+滑り)のこの倍未満なら見送り
-  min_occurrences: 10       # 30日で入る場面がこの回数未満なら見送り
+  fee_multiple: 3           # 値動き型: 値幅が(往復の手数料+滑り)のこの倍未満なら見送り
+  min_occurrences: 10       # 値動き型: 30日で入る場面がこの回数未満なら見送り
+  funding_min_hours: 30     # 歪み型: 30日で資金調達料が x% を超えた時間がこれ未満なら見送り
+  funding_fee_multiple: 2   # 歪み型: 受け取れた資金調達料の合計が、往復の手数料+滑りの合計のこの倍未満なら見送り
   days: 30
   max_holds: 3              # データが取れずに保留した回数がこれに達したら未対応
   max_per_day: 90
 
-tuning:                     # 週1回の棚卸しで最多の札に応じて1段きつくする(SPEC 6.3 用途3)
-  手数料負け: {setting: fee_multiple, value: 4}
-  機会不足: {setting: min_occurrences, value: 15}
+tuning:                     # 週1回の棚卸しで、型ごとの最多の札に応じて1段きつくする(SPEC 6.3 用途3)
+  値動き:
+    手数料負け: {setting: fee_multiple, value: 4}
+    機会不足: {setting: min_occurrences, value: 15}
+  歪み:
+    機会不足: {setting: min_hours, value: 6}               # 入口2の「3時間以上」を「6時間以上」に
+    手数料負け: {setting: funding_fee_multiple, value: 3}  # 調査の「2倍未満」を「3倍未満」に
 
 design:                     # SPEC 5.3
   max_per_day: 10
@@ -94,5 +107,16 @@ paper:                      # SPEC 5.5
   pass_profit_factor: 1.5
 
 refute:                     # SPEC 5.6
-  fee_multiplier: 2
+  fee_multiplier: 2         # 手数料と滑りをこの倍にして計算し直す
   max_single_share: 0.5
+
+feed:                       # 価格の受け取り口(SPEC 3.1)。python -m factory feed
+  interval_minutes: 10      # 動いているBOTの銘柄の価格と資金調達料を、この間隔で帳簿に取り込む
+
+watchdog:                   # 見張り役(SPEC 3.3)。python -m factory watchdog
+  check_seconds: 60         # 生死とメモリを確認する間隔
+  memory_limit_mb: 1024     # 1プロセスのメモリの上限。超えたらそのプロセスだけ再起動
+  max_crashes_per_hour: 3   # 1時間にこの回数落ちたら再起動をやめ、画面の「要判断」に出す
+  processes:                # 見張るプロセス: 名前 → python に渡す引数
+    dashboard: [-m, factory, dashboard]
+    feed: [-m, factory, feed]

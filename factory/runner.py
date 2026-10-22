@@ -1,24 +1,26 @@
 """1日1回の実行(SPEC 3.1: python -m factory run-daily)。
 
 順番:
-  0. 週1回の棚卸し(今週まだなら)
+  0. 週1回の棚卸し(今週まだなら。型ごと。メモのまとめも)
   1. 前の実行で送った一括処理(AI)の答えを受け取る
   2. paper評価中のBOTを今日の価格まで進め、合格したら反証
-  3. 探索: 順位表 → 財布の絞り込み → Haikuに一括で送り、答えを待って案登録
-  4. 調査 → 5. 新ロジック開発 → 6. 実装(と修理)
-工程ごとに失敗しても、残りの工程は続ける。結果は data/logs/ にも残す。
+  3. 探索の入口2: 資金調達料の歪み(AIを使わない。すぐ終わるので入口1の待ちより先に)
+  4. 探索の入口1: 順位表 → 財布の絞り込み → Haikuに一括で送り、答えを待って案登録
+  5. 調査 → 6. 新ロジック開発 → 7. 実装(と修理)
+工程ごとに失敗しても、残りの工程は続ける。結果は data/logs/factory-YYYYMMDD.log(全プロセス共通の1か所)にも残す。
 """
 from __future__ import annotations
 
 import traceback
 from collections.abc import Callable
-from pathlib import Path
 
-from . import ai_gateway, config, db, tuning
+from . import ai_gateway, config, db, logs, tuning
 from .hyperliquid.reader import Reader, ReaderError
 from .market import Market
 from .models import now_jst
-from .stages import design, explore, implement, investigate, paper
+from .stages import design, explore, explore_funding, implement, investigate, paper
+
+PROCESS = "run-daily"
 
 
 def _ids(xs: list[str], n: int = 8) -> str:
@@ -28,7 +30,8 @@ def _ids(xs: list[str], n: int = 8) -> str:
 def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None,
               skip_explore: bool = False, out: Callable[[str], None] = print) -> list[str]:
     conn = db.connect()
-    market = Market(conn, reader or Reader())
+    reader = reader or Reader()
+    market = Market(conn, reader)
     cfg = config.load_config()
     wait = cfg["explore"]["batch_wait_minutes"] if wait_minutes is None else wait_minutes
     lines: list[str] = []
@@ -37,6 +40,7 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
     def say(text: str) -> None:
         lines.append(text)
         out(text)
+        logs.write(PROCESS, text)
 
     def step(name: str, fn: Callable[[], None]) -> None:
         try:
@@ -50,8 +54,7 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
     say(f"run-daily 開始 {now_jst().strftime('%Y-%m-%d %H:%M')}")
 
     def stocktake():
-        note = tuning.weekly(conn)
-        if note:
+        for note in tuning.weekly(conn):
             say(f"[棚卸し] {note}")
 
     def leftovers():
@@ -71,6 +74,12 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
             f"修理 {len(r.repaired)}・直らず否決 {len(r.broken)}・開始待ち {len(r.waiting)}")
         if r.refute_passed or r.refute_failed:
             say(f"[反証] 合格(関所1へ) {_ids(r.refute_passed)}・不合格 {_ids(r.refute_failed)}")
+
+    def funding_step():
+        r = explore_funding.run(conn, market)
+        say(f"[探索(入口2)] 全銘柄 {r.listed}・出来高で残った {r.liquid}・3日以内に案にした {len(r.skipped_recent)}・"
+            f"資金調達料が極端 {len(r.candidates)} → 案登録 {len(r.registered)}・照合で除外(重複) {len(r.excluded)}"
+            + (f"・取得失敗 {r.errors}" if r.errors else ""))
 
     def explore_step():
         s = explore.scan(conn, market, progress=lambda i, n: say(f"[探索] 財布を調べている {i}/{n}"))
@@ -97,8 +106,10 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
         say(f"[調査] 継続 {len(r.passed)}・見送り({rej})・保留 {len(r.held)}")
 
     def design_step():
-        r = design.run(conn)
+        old = implement.send_back_old_rules(conn)     # 最長保有のない古いルールは、同じ実行で作り直す
+        r = design.run(conn, market)
         say(f"[新ロジック開発] 完了 {len(r.done)}・ルール不成立 {len(r.rejected)}"
+            + (f"・古いルールの作り直し {len(old)}" if old else "")
             + (f"・中断: {r.stopped}" if r.stopped else ""))
 
     def implement_step():
@@ -114,24 +125,18 @@ def run_daily(*, reader: Reader | None = None, wait_minutes: float | None = None
         if skip_explore:
             say("[探索] 今回は行わない(--skip-explore)")
         else:
+            step("探索(入口2)", funding_step)
             step("探索", explore_step)
         step("調査", investigate_step)
         step("新ロジック開発", design_step)
         step("実装", implement_step)
         say(f"run-daily 終了 {now_jst().strftime('%H:%M')}・今日のAI代 ${ai_gateway.today_cost(conn):.4f}")
     finally:
-        _write_log(lines, errors)
+        for e in errors:
+            logs.write(PROCESS, e, stage="エラー")
+        try:
+            db.record_refusals(conn, PROCESS, reader.take_refusals())
+        except Exception:     # 記録できなくても実行の結果は返す
+            pass
         conn.close()
     return lines
-
-
-def _write_log(lines: list[str], errors: list[str]) -> Path | None:
-    try:
-        logs = config.db_path().parent / "logs"
-        logs.mkdir(parents=True, exist_ok=True)
-        path = logs / f"run-daily-{now_jst().strftime('%Y%m%d')}.log"
-        with open(path, "a", encoding="utf-8") as f:
-            f.write("\n".join(lines + errors) + "\n\n")
-        return path
-    except OSError:
-        return None

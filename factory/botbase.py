@@ -4,8 +4,10 @@ BOT 1本 = bots/<記号>/ のフォルダ。中身は2つだけ:
   - bot.yaml     売買ルールの数字(銘柄・時間の単位・利益確定・損切り・1日の最大取引回数)
   - strategy.py  「入る条件」「出る条件」の関数だけ(AIが書くのはここだけ)
 
-注文・記録・停止・資金の上限・レバレッジ1倍・同時保有1は engine.py が受け持ち、
+注文・記録・停止・資金の上限・レバレッジ1倍・同時保有1は土台が受け持ち、
 strategy.py からは変えられない。strategy.py は読み込む前に静的検査にかける。
+段階3bからはBOTごとに土台をコピーする(bots/<記号>/base.py。読み込みは factory/botrun.py)。
+このファイルの load_spec・load_bot は、それより前のBOT(土台の版0)のためのもの。静的検査は全部の版で共通。
 """
 from __future__ import annotations
 
@@ -171,11 +173,15 @@ def load_spec(path: Path) -> BotSpec:
     return spec
 
 
-def load_bot(path: str | Path) -> Bot:
+def load_strategy(path: str | Path):
+    """strategy.py を静的検査してから、使える名前を絞った場所で読み込む。戻り値: (entry_signal, exit_signal)。
+
+    土台の版(engine.py の版0 か、BOT自身の base.py か)によらず、AIが書いた部分はここを必ず通す。
+    """
     path = Path(path)
-    spec = load_spec(path)
     source = (path / "strategy.py").read_text(encoding="utf-8")
     static_check(source)
+
     def _guarded_import(name, *args, **kwargs):
         if name not in ALLOWED_IMPORTS:
             raise ImportError(name)
@@ -184,5 +190,12 @@ def load_bot(path: str | Path) -> Bot:
     namespace: dict = {"__builtins__": {**SAFE_BUILTINS, "__import__": _guarded_import},
                        "math": math, "statistics": statistics}
     exec(compile(source, str(path / "strategy.py"), "exec"), namespace)  # 検査済みのコードだけ
-    return Bot(spec=spec, entry_signal=namespace["entry_signal"],
-               exit_signal=namespace.get("exit_signal"), path=path)
+    return namespace["entry_signal"], namespace.get("exit_signal")
+
+
+def load_bot(path: str | Path) -> Bot:
+    """土台の版0のBOT(bots/<記号>/ に base.py がない)を読み込む。版1以降は factory/botrun.py。"""
+    path = Path(path)
+    spec = load_spec(path)
+    entry, exit_ = load_strategy(path)
+    return Bot(spec=spec, entry_signal=entry, exit_signal=exit_, path=path)

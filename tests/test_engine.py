@@ -51,8 +51,8 @@ def test_funding_is_charged_while_holding(tmp_path):
     cs = flat(6) + candles([(100, 101, 100, 101), (101, 101, 101, 101)], start=T0 + 6 * STEP)
     funding = [Funding(T0 + 2 * STEP, 0.001), Funding(T0 + 3 * STEP, 0.001), Funding(T0 + 99 * STEP, 0.5)]
     t = run(bot, cs, funding, fee_rate=0).trades[0]
-    assert t.funding_usd == pytest.approx(2 * 2.0 * 100 * 0.001)
-    assert t.net_usd == pytest.approx(2.0 - t.funding_usd)
+    assert t.funding_usd == pytest.approx(-2 * 2.0 * 100 * 0.001)   # 買いで率がプラス → 払う(マイナス)
+    assert t.net_usd == pytest.approx(2.0 + t.funding_usd)
 
 
 def test_one_position_and_daily_limit(tmp_path):

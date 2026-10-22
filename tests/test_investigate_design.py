@@ -79,16 +79,17 @@ def test_weekly_stocktake_tightens_and_reverts(conn):
     week1 = now_jst() - timedelta(days=14)
     memos("重複", 9, week1)            # 重複は数えない
     memos("手数料負け", 3, week1)
-    note = tuning.weekly(conn, now=week1 + timedelta(hours=1))
-    assert "手数料負け" in note and tuning.current(conn)["fee_multiple"] == 4
-    assert tuning.weekly(conn, now=week1 + timedelta(hours=2)) is None     # 同じ週は1回
+    note = "\n".join(tuning.weekly(conn, now=week1 + timedelta(hours=1)))
+    assert "値動き型: 最多の札は手数料負け" in note and tuning.current(conn)["fee_multiple"] == 4
+    assert "歪み型: 直近7日の札なし" in note and "メモのまとめ" in note
+    assert tuning.weekly(conn, now=week1 + timedelta(hours=2)) == []      # 同じ週は1回
     week2 = week1 + timedelta(days=7)
     memos("機会不足", 2, week2)
     tuning.weekly(conn, now=week2 + timedelta(hours=1))
     assert tuning.current(conn) == {"fee_multiple": 3, "min_occurrences": 15}
     week3 = week2 + timedelta(days=7)
     memos("連敗", 5, week3)
-    note = tuning.weekly(conn, now=week3 + timedelta(hours=1))
+    note = "\n".join(tuning.weekly(conn, now=week3 + timedelta(hours=1)))
     assert "元に戻した" in note and tuning.current(conn) == {"fee_multiple": 3, "min_occurrences": 10}
 
 

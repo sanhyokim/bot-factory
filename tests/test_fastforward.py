@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 from factory import fastforward
-from factory.botbase import load_bot
+from factory.botrun import load as load_bot
 from factory.hyperliquid.reader import Funding
 from tests.helpers import DAY, HOUR, STEP, T0, candles
 

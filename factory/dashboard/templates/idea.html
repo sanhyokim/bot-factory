@@ -5,8 +5,9 @@
 <section>
   <table>
     <tr><th>作成日時</th><td>{{ idea.created_at }}</td></tr>
-    <tr><th>出どころ</th><td>{{ idea.source }}{% if idea.wallet %}({{ idea.wallet }}){% endif %}</td></tr>
+    <tr><th>出どころ / 型</th><td>{{ idea.source }}{% if idea.wallet %}({{ idea.wallet }}){% endif %} / {{ idea.type }}</td></tr>
     <tr><th>銘柄 / 時間 / 入り方</th><td>{{ idea.symbol }} / {{ idea.timeframe }} / {{ idea.entry_kind }}</td></tr>
+    {% if idea.entry_params %}<tr><th>入る条件の数字</th><td>{{ idea.entry_params }}</td></tr>{% endif %}
     <tr><th>要約</th><td>{{ idea.summary }}</td></tr>
     <tr><th>仮説</th><td>{{ idea.hypothesis }}</td></tr>
     <tr><th>照合結果</th><td>{{ ('あり(' ~ idea.match_memo_id ~ ')') if idea.match_found else 'なし' }}</td></tr>
@@ -18,7 +19,16 @@
   <table>
     <tr><th>銘柄</th><td>{{ rule.symbol }}</td></tr><tr><th>時間の単位</th><td>{{ rule.timeframe }}</td></tr>
     <tr><th>入る条件</th><td>{{ rule.entry_condition }}</td></tr><tr><th>出る条件</th><td>{{ rule.exit_condition }}</td></tr>
+    <tr><th>型</th><td>{{ rule.type }}</td></tr>
+    {% if rule.type == '歪み' %}
+    <tr><th>入る資金調達料 x / 出る y</th><td>±{{ rule.funding_x }}%/時 / ±{{ rule.funding_y }}%/時の内側</td></tr>
+    <tr><th>損切り</th><td>−{{ rule.stop_loss_pct }}%</td></tr>
+    {% else %}
     <tr><th>利益確定 / 損切り</th><td>+{{ rule.take_profit_pct }}% / −{{ rule.stop_loss_pct }}%</td></tr>
+    {% endif %}
+    <tr><th>最長保有</th><td>{{ (rule.max_hold_hours ~ '時間') if rule.max_hold_hours else 'なし(段階3bより前のルール)' }}</td></tr>
+    <tr><th>継続性 / 競争</th><td>{{ rule.continuity or '—' }} / {{ rule.competition or '—' }}</td></tr>
+    {% if rule.min_capital_usd %}<tr><th>1回に要る最小の資金</th><td>${{ '%.2f'|format(rule.min_capital_usd) }}</td></tr>{% endif %}
     <tr><th>1回の上限額</th><td>${{ rule.max_amount_usd }}</td></tr><tr><th>1日の最大取引回数</th><td>{{ rule.max_trades_per_day }}</td></tr>
     <tr><th>同時に持てる数 / レバレッジ</th><td>{{ rule.max_positions }} / {{ rule.leverage }}倍(固定)</td></tr>
   </table>
@@ -29,6 +39,8 @@
   <h2>BOT {{ b.id }} <span class="muted">{{ b.status }}</span></h2>
   <table>
     <tr><th>コードの場所</th><td>{{ b.code_path }}</td></tr>
+    <tr><th>土台の版 / 作ったAI</th><td>{{ b.base_version }} / {{ (b.made_by or '不明')|capitalize }}</td></tr>
+    <tr><th>継続性 / 競争</th><td>{{ b.continuity or '—' }} / {{ b.competition or '—' }}</td></tr>
     <tr><th>修理の回数</th><td>{{ b.attempts }}</td></tr>
     {% if b.last_error %}<tr><th>最後の不具合</th><td>{{ b.last_error }}</td></tr>{% endif %}
     {% if b.refute_note %}<tr><th>paper評価と反証</th><td style="white-space: pre-wrap">{{ b.refute_note }}</td></tr>{% endif %}
@@ -39,11 +51,11 @@
 <section>
   <h2>取引記録(新しい順・最大50件)</h2>
   <table>
-    <tr><th>BOT</th><th>区分</th><th>入った日時</th><th>価格</th><th>数量</th><th>出た日時</th><th>価格</th><th>手数料</th><th>資金調達料</th><th>純利益</th></tr>
+    <tr><th>BOT</th><th>区分</th><th>入った日時</th><th>価格</th><th>数量</th><th>出た日時</th><th>価格</th><th>手数料</th><th>滑り</th><th>資金調達料(受け取り+)</th><th>純利益</th></tr>
     {% for t in trades %}
     <tr><td>{{ t.bot_id }}</td><td>{{ t.kind }}</td><td>{{ t.entry_at[5:16] }}</td><td>{{ '%.6g'|format(t.entry_price) }}</td><td>{{ t.entry_qty }}</td>
       <td>{{ (t.exit_at or '')[5:16] }}</td><td>{{ '%.6g'|format(t.exit_price or 0) }}</td><td>${{ '%.3f'|format(t.fee_usd) }}</td>
-      <td>${{ '%.3f'|format(t.funding_usd) }}</td><td>${{ '%+.2f'|format(t.net_pnl_usd or 0) }}</td></tr>
+      <td>${{ '%.3f'|format(t.slippage_usd) }}</td><td>${{ '%+.3f'|format(t.funding_usd) }}</td><td>${{ '%+.2f'|format(t.net_pnl_usd or 0) }}</td></tr>
     {% endfor %}
   </table>
 </section>

@@ -28,8 +28,8 @@ def write_bot(tmp_path: Path, strategy: str, **yaml_fields) -> Path:
     return d
 
 
-def trade(exit_t, net, fee=0.2):
-    return SimTrade("long", exit_t - HOUR, 100.0, 2.0, exit_t, 100.0, fee, 0.0, net, "test")
+def trade(exit_t, net, fee=0.2, slippage=0.0):
+    return SimTrade("long", exit_t - HOUR, 100.0, 2.0, exit_t, 100.0, fee, slippage, 0.0, net, "test")
 
 
 def sim(trades, *, days=30, signal_every_hours=1):

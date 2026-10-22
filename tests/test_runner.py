@@ -1,4 +1,6 @@
 """run-daily を偽の取引所と偽のAIで通しで動かす(SPEC 10章 段階3)。"""
+import pytest
+
 from factory import config, db
 from factory.hyperliquid.reader import now_ms
 from factory.runner import run_daily
@@ -37,8 +39,9 @@ def test_day_one_moves_an_idea_from_registration_to_paper(conn, fake_ai, exchang
     # 財布は7日間は再分析しない
     assert conn.execute("SELECT COUNT(*) FROM wallet_scans").fetchone()[0] == 3
     # ログが残る
-    logs = list((config.db_path().parent / "logs").glob("run-daily-*.log"))
-    assert logs and "run-daily 終了" in logs[0].read_text(encoding="utf-8")
+    logs = list((config.db_path().parent / "logs").glob("factory-*.log"))
+    log = logs[0].read_text(encoding="utf-8")
+    assert "[run-daily/探索] [探索] 順位表の候補" in log and "run-daily 終了" in log
 
 
 def test_second_day_skips_scanned_wallets_and_runs_paper(conn, fake_ai, exchange, reader):
@@ -67,3 +70,37 @@ def test_a_failing_stage_does_not_stop_the_others(conn, fake_ai, exchange, reade
     text = "\n".join(lines)
     assert "[探索] 止まった" in text
     assert "[調査] 継続 1" in text and "[実装] paper評価を開始 B-0001" in text, text
+
+
+def test_entry_two_takes_a_distortion_idea_to_paper(conn, fake_ai, exchange, reader):
+    """段階3bの完了の条件: 入口2で案が登録され、歪み型の売買ルールが paper評価中まで人手なしで進む。"""
+    import math
+
+    from tests.fakes import HOUR
+
+    # ETH の資金調達料が1時間あたり +0.02〜0.04%(買い側が払いすぎ)で続いている
+    exchange.funding_fn["ETH"] = lambda t: 0.0003 + 0.0001 * math.sin(t / (5 * HOUR))
+    fake_ai.code = ('X = 0.0002\nY = 0.000005\n\n\ndef entry_signal(history):\n'
+                    '    rates = history.funding_rates(1)\n    if not rates:\n        return None\n'
+                    '    if rates[-1] >= X:\n        return "short"\n    if rates[-1] <= -X:\n        return "long"\n'
+                    '    return None\n\n\ndef exit_signal(history, position):\n'
+                    '    rates = history.funding_rates(1)\n    return bool(rates) and abs(rates[-1]) < Y\n')
+    fake_ai.distortion_rule = {**fake_ai.distortion_rule, "symbol": "ETH"}
+    lines = run_daily(reader=reader, wait_minutes=0, skip_explore=False, out=lambda s: None)
+    text = "\n".join(lines)
+    assert "[探索(入口2)] 全銘柄 2・出来高で残った 2" in text and "案登録 1" in text, text
+    idea = conn.execute("SELECT * FROM ideas WHERE source = 'funding'").fetchone()
+    assert idea["type"] == "歪み" and idea["entry_kind"] == "資金調達料" and idea["side"] == "short"
+    assert idea["summary"].startswith("ETHの資金調達料が極端(直近24時間の最大 +0.0400%/時)")
+    assert (idea["stage"], idea["verdict"]) == ("paper評価", "継続"), text
+    rule = conn.execute("SELECT * FROM rules WHERE id = ?", (idea["id"],)).fetchone()
+    assert rule["type"] == "歪み" and rule["timeframe"] == "1h" and rule["funding_x"] == pytest.approx(0.02, abs=1e-3)
+    bot = conn.execute("SELECT * FROM bots WHERE rule_id = ?", (idea["id"],)).fetchone()
+    assert bot["status"] == "paper評価中" and bot["base_version"] == 1 and bot["made_by"] == "sonnet"
+    assert (bot["continuity"], bot["competition"]) == ("常にある", "競争なし")
+    folder = config.bots_dir() / bot["id"]
+    assert (folder / "base.py").exists() and "type: 歪み" in (folder / "bot.yaml").read_text(encoding="utf-8")
+    # 2回目: 同じ銘柄は3日間は作り直さない
+    text = "\n".join(run_daily(reader=reader, wait_minutes=0, out=lambda s: None))
+    assert "3日以内に案にした 1" in text and conn.execute(
+        "SELECT COUNT(*) FROM ideas WHERE source = 'funding'").fetchone()[0] == 1

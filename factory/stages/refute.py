@@ -1,5 +1,7 @@
 """反証(SPEC 5.6)。paper評価に合格したBOTを「たまたまではないか」の3条件で検査する。
 
+手数料2倍検査は、手数料と滑りの両方を2倍にして計算し直す(第2版から。滑りは取引記録の slippage_usd)。
+
 計算はプログラムで行う。AI(Sonnet)には判定の説明文(200字)だけを頼む(explain=True の時)。
 """
 from __future__ import annotations
@@ -39,8 +41,9 @@ def refute(trades: list[SimTrade], start_t: int, end_t: int) -> RefuteResult:
                      f"前半{first:+.2f}ドル・後半{second:+.2f}ドル")
 
     mult = cfg["fee_multiplier"]
-    doubled = sum(t.net_usd - (mult - 1) * t.fee_usd for t in trades)
-    c2 = RefuteCheck("手数料2倍検査", doubled > 0, "手数料2倍で赤字", f"手数料{mult}倍で純利益{doubled:+.2f}ドル")
+    doubled = sum(t.net_usd - (mult - 1) * (t.fee_usd + t.slippage_usd) for t in trades)
+    c2 = RefuteCheck("手数料2倍検査", doubled > 0, "手数料2倍で赤字",
+                     f"手数料と滑りを{mult:g}倍にして純利益{doubled:+.2f}ドル")
 
     total = sum(t.net_usd for t in trades)
     best = max((t.net_usd for t in trades), default=0.0)

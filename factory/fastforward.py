@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import autotest, config
-from .botbase import Bot
+from .botrun import LoadedBot as Bot
 from .engine import jst_date
 from .hyperliquid.reader import Candle, Funding, Reader, now_ms
 from .stages import paper, refute
@@ -55,8 +55,7 @@ def run(bot: Bot, data: MarketData) -> dict:
 
 def report(bot: Bot, data: MarketData, out: dict, *, with_paper: bool = True) -> str:
     c0, c1 = data.candles[0], data.candles[-1]
-    lines = [f"BOT {bot.spec.name}: {bot.spec.symbol} {bot.spec.timeframe} "
-             f"利益確定+{bot.spec.take_profit_pct}% 損切り−{bot.spec.stop_loss_pct}%",
+    lines = [f"BOT {bot.spec.name}(土台の版{bot.base_version}): {bot.spec.describe()}",
              f"価格 {jst_date(c0.t)}〜{jst_date(c1.t)} の{len(data.candles)}本・資金調達料{len(data.funding)}件",
              "", "[自動テスト]"]
     for c in out["checks"]:

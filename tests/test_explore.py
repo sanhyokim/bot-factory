@@ -4,7 +4,7 @@ import json
 from factory import memo
 from factory.hyperliquid.reader import Fill, now_ms
 from factory.market import Market
-from factory.models import Memo
+from factory.models import Memo, match_key
 from factory.stages import explore
 from tests.fakes import DAY, GOOD_HYPOTHESIS, HOUR, board_row, trader_fills
 
@@ -82,8 +82,10 @@ def test_scan_skips_recent_and_high_frequency_wallets(conn, exchange, reader):
 
 
 def test_collect_registers_and_excludes_by_memo_match(conn, fake_ai):
+    # 照合キーは 型・銘柄・入る条件の種類・数字(SPEC 6.3)。GOOD_HYPOTHESIS は n=20・x=0
     memo.add_memo(conn, Memo(stage="調査", tag="機会不足", reason="前に落ちた", idea_summary="前の案",
-                             symbol="BTC", timeframe="1h", entry_kind="高値抜け"))
+                             symbol="BTC", timeframe="1h", entry_kind="高値抜け",
+                             match_key=match_key("値動き", "BTC", "高値抜け", '{"n": 20, "x": 0}')))
     w = explore.WalletCheck("0x" + "a" * 40, True, "", [])
     batch_id, n = explore.submit(conn, [w])
     assert batch_id and n == 1
