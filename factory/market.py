@@ -20,6 +20,22 @@ class Market:
         self._clock = clock
         self._decimals: dict[str, int] | None = None
         self._tried: dict[tuple, int] = {}   # この実行で取りに行った一番古い時刻(取れない過去を何度も取りに行かない)
+        self._holes_tried: set[tuple] = set()  # この実行で埋めに行った途中の抜け(取引所にもない抜けを何度も取りに行かない)
+
+    def _holes(self, key: tuple, sql: str, args: tuple, min_gap: int, step: int) -> list[tuple[int, int]]:
+        """保管した範囲の途中の抜け(間隔が min_gap を超える所)を、取りに行く範囲の一覧で返す。
+
+        保管は「一番古い時刻より前」と「一番新しい時刻より後」しか足さないので、短い期間だけ取った日が
+        あると途中が抜けたままになる(例: 入口2が直近24時間だけ取り、数日後に調査が30日分を読む)。
+        """
+        out = []
+        for prev, t in self.conn.execute(
+                f"SELECT prev, t FROM (SELECT t, LAG(t) OVER (ORDER BY t) AS prev FROM ({sql})) WHERE t - prev > ?",
+                (*args, min_gap)):
+            if (key, prev) not in self._holes_tried:
+                self._holes_tried.add((key, prev))
+                out.append((prev + step, t))
+        return out
 
     def now(self) -> int:
         return self._clock()
@@ -56,6 +72,8 @@ class Market:
                 ranges.append((start_ms, lo))
             if hi + step < limit:
                 ranges.append((hi + step, limit))
+            ranges += self._holes(key, "SELECT t FROM candles WHERE symbol = ? AND interval = ? AND t >= ? AND t < ?",
+                                  (symbol, code, start_ms, limit), max(3 * step, 6 * HOUR_MS), step)
         for a, b in ranges:
             got = [c for c in self.reader.candles(symbol, code, a, b) if c.t + step <= now]
             self.conn.executemany(
@@ -85,6 +103,8 @@ class Market:
                 ranges.append((start_ms, lo))
             if hi + HOUR_MS < limit:
                 ranges.append((hi + 1, limit))
+            ranges += self._holes(key, "SELECT t FROM funding WHERE symbol = ? AND t >= ? AND t < ?",
+                                  (symbol, start_ms, limit), 2 * HOUR_MS, 1)     # 資金調達料は毎時ある
         for a, b in ranges:
             got = self.reader.funding_history(symbol, a, b)
             self.conn.executemany("INSERT OR REPLACE INTO funding(symbol, t, rate) VALUES (?,?,?)",

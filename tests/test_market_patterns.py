@@ -39,6 +39,43 @@ def test_funding_is_cached(conn, exchange, reader):
     assert exchange.count("fundingHistory") == 1
 
 
+def test_a_hole_in_the_middle_is_filled(conn, exchange, reader):
+    """短い期間だけ取った日が離れてあっても、長い期間を読む時に途中の抜けを埋める
+    (入口2が直近24時間だけ取り、数日後に調査が30日分を読むと、抜けた分だけ機会不足に見えていた)。"""
+    now = now_ms()
+    stale = Market(conn, reader, clock=lambda: now - 5 * DAY)
+    stale.funding("ETH", now - 6 * DAY, now - 5 * DAY)                   # 5日前に、その時の直近24時間だけ取った
+    stale.candles("ETH", "1h", now - 6 * DAY, now - 5 * DAY)
+    m = Market(conn, reader)
+    m.funding("ETH", now - DAY, now)                                     # 今日、直近24時間だけ取った
+    m.candles("ETH", "1h", now - DAY, now)
+    rates = Market(conn, reader).funding("ETH", now - 30 * DAY, now)
+    assert len(rates) >= 30 * 24 - 1 and all(b.t - a.t == HOUR for a, b in zip(rates, rates[1:]))
+    bars = Market(conn, reader).candles("ETH", "1h", now - 30 * DAY, now)
+    assert len(bars) >= 30 * 24 - 2 and all(b.t - a.t == HOUR for a, b in zip(bars, bars[1:]))
+    # 埋めたあとは、もう取りに行かない
+    calls = exchange.count("fundingHistory"), exchange.count("candleSnapshot")
+    Market(conn, reader).funding("ETH", now - 30 * DAY, now)
+    Market(conn, reader).candles("ETH", "1h", now - 30 * DAY, now)
+    assert (exchange.count("fundingHistory"), exchange.count("candleSnapshot")) == calls
+
+
+def test_a_hole_the_exchange_cannot_fill_is_tried_once_per_run(conn, exchange, reader):
+    now = now_ms()
+    m = Market(conn, reader)
+    m.funding("ETH", now - 3 * DAY, now)
+    conn.execute("DELETE FROM funding WHERE symbol = 'ETH' AND t BETWEEN ? AND ?", (now - 2 * DAY, now - DAY))
+    exchange.fail.add("fundingHistory")             # 取引所に断られて埋まらない
+    calls = exchange.count("fundingHistory")
+    m2 = Market(conn, reader)
+    for _ in range(3):
+        try:
+            m2.funding("ETH", now - 3 * DAY, now)
+        except Exception as e:  # noqa: BLE001 - ReaderError を確かめる
+            assert type(e).__name__ == "ReaderError"
+    assert exchange.count("fundingHistory") == calls + 1
+
+
 def test_breakout_episodes_are_counted_once_per_run():
     rows = [(100, 101, 99, 100)] * 5 + [(100, 103, 100, 102.5), (102.5, 104, 102, 103.5)] + \
            [(103, 103, 101, 101)] * 5 + [(101, 106, 101, 105)]
