@@ -1,7 +1,7 @@
 """AI窓口: 工場の中でAIに質問を送る唯一の口(SPEC 3.1・7章)。
 
 - 接続先(api / claude_code / mock)とモデルは config.yaml で切り替える
-- 呼ぶたびに AI費用帳簿(ai_costs)に1行つける
+- 呼ぶたびに AI費用帳簿(ai_costs)に1行つける。答えが返らなかった・読めなかった呼び出しは ai_failures に1行
 - 1日の費用が上限を超えていたら呼ばない
 - 送信文に .env の鍵が含まれていたら送らない(SPEC 9章)
 - 答えの形を決めたい時は schema(JSON Schema)を渡す。答えは AIResult.data に入る
@@ -254,6 +254,16 @@ def _log_cost(conn: sqlite3.Connection, stage: str, model: str, backend: str, ti
     return cost
 
 
+def _log_failure(conn: sqlite3.Connection, stage: str, model: str, backend: str, reason: str, *,
+                 idea_id: str | None = None, bot_id: str | None = None) -> None:
+    """AIが答えを返せなかった呼び出しを残す。予算切れ・鍵の検査で送らなかったものは数えない。"""
+    conn.execute(
+        """INSERT INTO ai_failures(created_at, stage, model, backend, idea_id, bot_id, reason)
+           VALUES (?,?,?,?,?,?,?)""",
+        (now_jst().isoformat(timespec="seconds"), stage, model, backend, idea_id, bot_id, reason[:200]))
+    conn.commit()
+
+
 # --- 1問ずつ送る ---
 
 def ask(conn: sqlite3.Connection, stage: str, prompt: str, *, system: str | None = None,
@@ -264,9 +274,17 @@ def ask(conn: sqlite3.Connection, stage: str, prompt: str, *, system: str | None
     check_budget(conn)
     check_secrets(prompt + (system or ""))
     backend = _backend()
-    text, tin, tout = _dispatch(backend, stage, model, prompt, system, schema, max_tokens)
+    try:
+        text, tin, tout = _dispatch(backend, stage, model, prompt, system, schema, max_tokens)
+    except (AIError, subprocess.SubprocessError, OSError, ValueError) as e:
+        _log_failure(conn, stage, model, backend, str(e) or type(e).__name__, idea_id=idea_id, bot_id=bot_id)
+        raise
     cost = _log_cost(conn, stage, model, backend, tin, tout, batch=False, idea_id=idea_id, bot_id=bot_id)
-    data = parse_json(text) if schema else None
+    try:
+        data = parse_json(text) if schema else None
+    except AIError as e:
+        _log_failure(conn, stage, model, backend, str(e), idea_id=idea_id, bot_id=bot_id)
+        raise
     return AIResult(text=text, model=model, input_tokens=tin, output_tokens=tout, cost_usd=cost, data=data)
 
 
@@ -299,8 +317,12 @@ def submit_batch(conn: sqlite3.Connection, stage: str, purpose: str, items: list
         client = _client()
         requests = [Request(custom_id=it.key, params=MessageCreateParamsNonStreaming(
             **_params(model_id, it.prompt, it.system, schema, max_tokens))) for it in items]
-        with _api_errors():
-            batch_id = client.messages.batches.create(requests=requests).id
+        try:
+            with _api_errors():
+                batch_id = client.messages.batches.create(requests=requests).id
+        except AIError as e:
+            _log_failure(conn, stage, model, backend, f"一括処理を送れなかった({len(items)}件): {e}")
+            raise
     else:
         batch_id = f"local-{now_jst().strftime('%Y%m%d%H%M%S')}-{purpose}-{os.urandom(3).hex()}"
         results = {}
@@ -374,6 +396,11 @@ def _collect_one(conn: sqlite3.Connection, row: sqlite3.Row) -> list[BatchOutcom
         for key, res in json.loads(row["results_json"] or "{}").items():
             outcomes.append(_outcome(conn, row, key, items.get(key, {}), schema, res.get("text"),
                                      res.get("in", 0), res.get("out", 0), res.get("error")))
+    for o in outcomes:
+        if o.error:
+            item = items.get(o.key, {})
+            _log_failure(conn, row["stage"], row["model"], row["backend"], o.error,
+                         idea_id=item.get("idea_id"), bot_id=item.get("bot_id"))
     conn.execute("UPDATE ai_batches SET status = '受取済み' WHERE id = ?", (row["id"],))
     conn.commit()
     return outcomes

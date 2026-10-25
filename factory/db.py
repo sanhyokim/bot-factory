@@ -157,6 +157,37 @@ CREATE TABLE IF NOT EXISTS exchange_refusals (
     process    TEXT NOT NULL,
     count      INTEGER NOT NULL
 );
+
+-- 著者の記事(2026-10-23・24)から足したもの。費用帳簿は答えが返った呼び出ししか残らないので、
+-- AIが答えを返せなかった呼び出しを別に残す(画面 枠6)
+CREATE TABLE IF NOT EXISTS ai_failures (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    stage      TEXT NOT NULL,
+    model      TEXT NOT NULL,
+    backend    TEXT NOT NULL,
+    idea_id    TEXT,
+    bot_id     TEXT,
+    reason     TEXT NOT NULL
+);
+
+-- 調査の結果(継続/見送り)。週次の「調査で見送った率」に使う(画面 枠5)
+CREATE TABLE IF NOT EXISTS investigate_results (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    idea_id    TEXT NOT NULL,
+    type       TEXT NOT NULL,
+    result     TEXT NOT NULL,          -- 継続 / 見送り
+    tag        TEXT                    -- 見送りの札
+);
+
+-- 設計時の注意書き(SPEC 6.3 用途2)でAIに渡した否決メモ。メモが使われているかを測る(画面 枠5)
+CREATE TABLE IF NOT EXISTS memo_uses (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    memo_id    TEXT NOT NULL,
+    idea_id    TEXT
+);
 """
 
 # 既にあるデータベースに後から足した列(段階3)

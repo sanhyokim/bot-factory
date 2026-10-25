@@ -199,6 +199,7 @@ def run(conn: sqlite3.Connection, market: Market, *, limit: int | None = None) -
                 db.set_idea_state(conn, idea["id"], "調査", "保留")
                 rep.held.append(idea["id"])
                 continue
+        memo.record_investigation(conn, idea["id"], idea["type"], d.verdict, d.tag)
         if d.verdict == "継続":
             db.set_idea_state(conn, idea["id"], "調査", "継続")
             rep.passed.append(idea["id"])

@@ -126,6 +126,24 @@ def _watch(conn) -> dict:
     }
 
 
+def _ai_failures(conn) -> dict:
+    """枠6: AIが答えを返せなかった回数(今日・直近7日)と、直近7日の工程・モデル別の内訳。"""
+    week = (now_jst() - timedelta(days=7)).isoformat(timespec="seconds")
+    today = now_jst().date().isoformat()
+    count = "SELECT COUNT(*) FROM ai_failures WHERE created_at >= ?"
+    return {
+        "today": conn.execute(count, (today,)).fetchone()[0],
+        "week": conn.execute(count, (week,)).fetchone()[0],
+        "ok_week": conn.execute("SELECT COUNT(*) FROM ai_costs WHERE created_at >= ?", (week,)).fetchone()[0],
+        "by_stage": conn.execute(
+            """SELECT f.stage, f.model, COUNT(*) AS n,
+                      (SELECT reason FROM ai_failures g WHERE g.stage = f.stage AND g.model = f.model
+                       ORDER BY g.id DESC LIMIT 1) AS last_reason
+               FROM ai_failures f WHERE f.created_at >= ? GROUP BY f.stage, f.model ORDER BY n DESC""",
+            (week,)).fetchall(),
+    }
+
+
 def _memo_panel(conn) -> dict:
     """枠5: 直近7日の札の集計表(型ごと)、週次3指標(型ごと)、まとめ、型ごとの今の絞り込み。"""
     merged = conn.execute("""SELECT COUNT(*), COALESCE(SUM(merge_count), 0) FROM memos
@@ -135,6 +153,7 @@ def _memo_panel(conn) -> dict:
     return {"tags": {t: memo.tag_counts(conn, 7, type_=t) for t in TYPES},
             "weekly": {t: memo.weekly_metrics(conn, 8, type_=t) for t in TYPES},
             "merged": {"targets": merged[0], "originals": merged[1]},
+            "unused": {t: memo.unused_memos(conn, type_=t) for t in TYPES},
             "tuning": {t: r for t, r in tuning_rows.items() if r is not None}}
 
 
@@ -199,6 +218,7 @@ def index(request: Request, stage: str | None = None, verdict: str | None = None
             "stage_labels": STAGE_LABELS,
             "implement": _implement_failure(conn),
             "watch": _watch(conn),
+            "ai_failures": _ai_failures(conn),
             "scoreboard": _ai_scoreboard(conn),
             "yields": _yields(conn),
             "filters": {"stage": stage or "", "verdict": verdict or "", "tag": tag or "", "type": type or "",
