@@ -169,8 +169,9 @@ def entry_x(idea) -> float | None:
     return None
 
 
-def prompt_for(conn: sqlite3.Connection, idea) -> str:
-    notes = memo.design_notes(conn, idea["type"], idea["symbol"], idea["source"])
+def prompt_for(conn: sqlite3.Connection, idea, notes: list | None = None) -> str:
+    if notes is None:
+        notes = memo.design_notes(conn, idea["type"], idea["symbol"], idea["source"])
     lines = [f"案 {idea['id']}({idea['type']}型): {idea['summary']}",
              f"仮説: {idea['hypothesis']}" if idea["hypothesis"] else ""]
     if idea["type"] == DISTORTION:
@@ -262,13 +263,16 @@ def design_one(conn: sqlite3.Connection, idea, market=None) -> bool:
     if distortion and x is None:
         memo.memo_for_idea(conn, idea["id"], "新ロジック開発", "ルール不成立", "入る資金調達料 x の数字がない")
         return False
-    base = prompt_for(conn, idea)
+    notes = memo.design_notes(conn, idea["type"], idea["symbol"], idea["source"])
+    base = prompt_for(conn, idea, notes)
     missing: list[str] = []
     for attempt in range(2):     # 欠けていれば1回だけ書き直し
         prompt = base if not missing else (
             base + "\n前の答えは定型の項目が欠けていた: " + "、".join(missing) + "。全部を数字で埋めて書き直して。")
         r = ai_gateway.ask(conn, "design", prompt, system=SYSTEM_DISTORTION if distortion else SYSTEM,
                            schema=DISTORTION_SCHEMA if distortion else PRICE_SCHEMA, idea_id=idea["id"])
+        if attempt == 0:
+            memo.record_uses(conn, [n["id"] for n in notes], idea["id"])
         missing = (distortion_problems(r.data, idea["symbol"], x) if distortion
                    else problems(r.data, idea["symbol"]))
         if not missing:

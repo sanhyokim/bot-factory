@@ -102,19 +102,24 @@
     </div>
   {% endfor %}
   </div>
+  <p class="muted">調査で見送り = 調査の結果が出た案のうち見送った数(外のデータが取れない・取引所にない案は除く)。急に上がったら、探索の質が落ちたか、取れる機会が埋まってきたかを疑う。
+    渡したメモ = 新ロジック開発でAIに注意書きとして渡した否決メモの延べ数。</p>
   <p class="muted">まとめ(案の要約が同じメモを1件に): {{ memo_panel.merged.targets }}件にまとめた(元のメモ {{ memo_panel.merged.originals }}件)。まとめたメモも札の集計では1件ずつ数える。</p>
 
   <div class="cols">
   {% for t in types %}
     <div>
-      <h3 style="font-size:14px">{{ t }}型: 週次3指標</h3>
+      <h3 style="font-size:14px">{{ t }}型: 週次の指標</h3>
       <table>
-        <tr><th>週(月曜〜)</th><th>照合で除外</th><th>案登録</th><th>反証合格</th><th>合格率</th></tr>
+        <tr><th>週(月曜〜)</th><th>照合で除外</th><th>案登録</th><th>反証合格</th><th>合格率</th><th>調査で見送り</th><th>渡したメモ</th></tr>
         {% for w in memo_panel.weekly[t] %}
         <tr><td>{{ w.week }}</td><td>{{ w.excluded }}</td><td>{{ w.registered }}</td><td>{{ w.passed }}</td>
-          <td>{{ '%.1f%%'|format(w.pass_rate * 100) if w.pass_rate is not none else '—' }}</td></tr>
+          <td>{{ '%.1f%%'|format(w.pass_rate * 100) if w.pass_rate is not none else '—' }}</td>
+          <td>{% if w.skip_rate is not none %}{{ w.skipped }}/{{ w.investigated }}({{ '%.0f%%'|format(w.skip_rate * 100) }}){% else %}—{% endif %}</td>
+          <td>{{ w.notes_passed }}</td></tr>
         {% endfor %}
       </table>
+      <p class="muted">一度もAIに渡されていないメモ: {{ memo_panel.unused[t].unused }}件 / {{ memo_panel.unused[t].total }}件(重複・合格の記録は除く)</p>
     </div>
   {% endfor %}
   </div>
@@ -160,6 +165,16 @@
   </table>
   <p class="muted">実装した本数は自動テストを通って paper評価を始めたBOT。打率は 本番で黒字の本数 ÷ 実装した本数。AI代はそのBOTと元の案にかかった分。</p>
   {% else %}<p class="muted">まだBOTがありません。</p>{% endif %}
+
+  <h3 style="font-size:14px">AIが答えを返せなかった回数</h3>
+  <p>今日 <b>{{ ai_failures.today }}</b>回・直近7日 <b>{{ ai_failures.week }}</b>回
+    <span class="muted">(直近7日に答えが返った呼び出し {{ ai_failures.ok_week }}回)</span></p>
+  {% if ai_failures.by_stage %}
+  <table>
+    <tr><th>工程</th><th>モデル</th><th>直近7日</th><th>最後の理由</th></tr>
+    {% for r in ai_failures.by_stage %}<tr><td>{{ stage_labels.get(r.stage, r.stage) }}</td><td>{{ r.model }}</td><td>{{ r.n }}</td><td>{{ r.last_reason }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
 
   <h3 style="font-size:14px">見張り役とデータ窓口</h3>
   <p>データ窓口(取引所)に断られた回数: 今日 <b>{{ watch.refused_today }}</b>回・直近7日 <b>{{ watch.refused_week }}</b>回</p>

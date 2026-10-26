@@ -108,6 +108,33 @@ def design_notes(conn: sqlite3.Connection, type_: str, symbol: str, source: str)
     ).fetchall()
 
 
+def record_uses(conn: sqlite3.Connection, memo_ids: list[str], idea_id: str | None) -> None:
+    """設計時の注意書きでAIに渡したメモを残す(メモが使われているかの測定)。"""
+    ts = now_jst().isoformat(timespec="seconds")
+    conn.executemany("INSERT INTO memo_uses(created_at, memo_id, idea_id) VALUES (?,?,?)",
+                     [(ts, m, idea_id) for m in memo_ids])
+    conn.commit()
+
+
+def record_investigation(conn: sqlite3.Connection, idea_id: str, type_: str, verdict: str,
+                         tag: str | None) -> None:
+    """調査の結果(継続/見送り)を残す。保留は結果が出ていないので残さない。"""
+    if verdict in ("継続", "見送り"):
+        conn.execute("INSERT INTO investigate_results(created_at, idea_id, type, result, tag) VALUES (?,?,?,?,?)",
+                     (now_jst().isoformat(timespec="seconds"), idea_id, type_, verdict, tag))
+        conn.commit()
+
+
+def unused_memos(conn: sqlite3.Connection, *, type_: str | None = None) -> dict:
+    """注意書きで一度もAIに渡されていないメモの数。照合で除外した記録(重複)と合格の記録は数えない。"""
+    where, args = (" AND type = ?", [type_]) if type_ else ("", [])
+    base = "FROM memos WHERE merged_into IS NULL AND tag NOT IN ('重複', ?)" + where
+    total = conn.execute("SELECT COUNT(*) " + base, (PASS_TAG, *args)).fetchone()[0]
+    unused = conn.execute("SELECT COUNT(*) " + base + " AND id NOT IN (SELECT memo_id FROM memo_uses)",
+                          (PASS_TAG, *args)).fetchone()[0]
+    return {"total": total, "unused": unused}
+
+
 def tag_counts(conn: sqlite3.Connection, days: int = 7, *, type_: str | None = None,
                now: datetime | None = None) -> list[sqlite3.Row]:
     """直近N日の札の集計(SPEC 6.3 用途3・ダッシュボード枠5)。型を渡すとその型だけ。
@@ -125,9 +152,13 @@ def tag_counts(conn: sqlite3.Connection, days: int = 7, *, type_: str | None = N
 
 def weekly_metrics(conn: sqlite3.Connection, weeks: int = 8, *, type_: str | None = None,
                    now: datetime | None = None) -> list[dict]:
-    """週次3指標(SPEC 6.4)。週は月曜始まり。新しい週が先頭。型を渡すとその型だけ。
+    """週次3指標(SPEC 6.4)と、著者の記事(2026-10-24)から足した2つ。週は月曜始まり。新しい週が先頭。
+    型を渡すとその型だけ。
 
     合格率は、その週に登録された案のうち反証を通過した(関所1以降に進んだ)数 ÷ 登録数。
+    見送り率は、その週に調査の結果が出た案のうち見送った数 ÷ 結果が出た数。外のデータが取れなかった・
+    取引所にない(札 未対応)ものは案の良し悪しではないので、分子にも分母にも入れない。
+    渡したメモは、その週に設計時の注意書きでAIに渡したメモの延べ数。
     """
     now = now or now_jst()
     monday = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -148,9 +179,19 @@ def weekly_metrics(conn: sqlite3.Connection, weeks: int = 8, *, type_: str | Non
                AND (stage = '本番' OR (stage = '反証' AND verdict = '完了')
                     OR id IN (SELECT idea_id FROM memos WHERE tag = ?))""" + where,
             (s, e, PASS_TAG, *args)).fetchone()[0]
+        res = dict(conn.execute(
+            """SELECT result, COUNT(*) FROM investigate_results WHERE created_at >= ? AND created_at < ?
+               AND COALESCE(tag, '') != '未対応'""" + where + " GROUP BY result", (s, e, *args)).fetchall())
+        judged = res.get("継続", 0) + res.get("見送り", 0)
+        uses = conn.execute(
+            """SELECT COUNT(*) FROM memo_uses u JOIN memos m ON m.id = u.memo_id
+               WHERE u.created_at >= ? AND u.created_at < ?""" + where.replace("type", "m.type"),
+            (s, e, *args)).fetchone()[0]
         rows.append({
             "week": start.date().isoformat(), "excluded": excluded, "registered": registered,
             "passed": passed, "pass_rate": (passed / registered) if registered else None,
+            "investigated": judged, "skipped": res.get("見送り", 0),
+            "skip_rate": (res.get("見送り", 0) / judged) if judged else None, "notes_passed": uses,
         })
     return rows
 
