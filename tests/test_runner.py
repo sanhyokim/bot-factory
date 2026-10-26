@@ -76,10 +76,9 @@ def test_entry_two_takes_a_distortion_idea_to_paper(conn, fake_ai, exchange, rea
     """段階3bの完了の条件: 入口2で案が登録され、歪み型の売買ルールが paper評価中まで人手なしで進む。"""
     import math
 
-    from tests.fakes import HOUR
-
-    # ETH の資金調達料が1時間あたり +0.02〜0.04%(買い側が払いすぎ)で続いている
-    exchange.funding_fn["ETH"] = lambda t: 0.0003 + 0.0001 * math.sin(t / (5 * HOUR))
+    # ETH の資金調達料が1時間あたり +0.02〜0.04%(買い側が払いすぎ)で続いている。
+    # 波の長さを24時間にして、どの時刻に流しても直近24時間に山(+0.04%)が入るようにする
+    exchange.funding_fn["ETH"] = lambda t: 0.0003 + 0.0001 * math.sin(2 * math.pi * t / DAY)
     fake_ai.code = ('X = 0.0002\nY = 0.000005\n\n\ndef entry_signal(history):\n'
                     '    rates = history.funding_rates(1)\n    if not rates:\n        return None\n'
                     '    if rates[-1] >= X:\n        return "short"\n    if rates[-1] <= -X:\n        return "long"\n'

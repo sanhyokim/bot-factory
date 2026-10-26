@@ -76,7 +76,7 @@ def test_weekly_stocktake_tightens_and_reverts(conn):
         for i in range(n):
             memo.add_memo(conn, Memo(stage="調査", tag=tag, reason="r", idea_summary="s"), at=at)
 
-    week1 = now_jst() - timedelta(days=14)
+    week1 = tuning.week_start(now_jst() - timedelta(days=14)) + timedelta(hours=10)   # 2週前の月曜10時(日曜の夜でも週をまたがない)
     memos("重複", 9, week1)            # 重複は数えない
     memos("手数料負け", 3, week1)
     note = "\n".join(tuning.weekly(conn, now=week1 + timedelta(hours=1)))
