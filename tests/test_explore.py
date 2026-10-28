@@ -224,7 +224,7 @@ def test_explore_check_counts_each_filter_without_recording(conn, exchange, read
                       big: trader_fills("BTC", start, 60, notional=5000)}
     out = walletcheck.run(reader, 30)
     assert "順位表 4財布のうち候補 3財布" in out and "先頭 3財布を読む" in out
-    assert "候補の条件ごとに残った数: 損益プラス 4 → 資金100〜10,000ドル 3 →" in out
+    assert "候補の条件ごとに残った数: 損益プラス 4 → 資金100〜100,000ドル 3 →" in out
     assert "全部の条件を通過 1" in out and "取引50回以上 2" in out and "中央値2000ドル以下 2" in out
     assert "取引20回(基準50回以上)" in out and "取引額の中央値" in out
     assert conn.execute("SELECT COUNT(*) FROM wallet_scans").fetchone()[0] == 0
