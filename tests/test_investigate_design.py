@@ -93,6 +93,17 @@ def test_weekly_stocktake_tightens_and_reverts(conn):
     assert "元に戻した" in note and tuning.current(conn) == {"fee_multiple": 3, "min_occurrences": 10}
 
 
+def test_same_top_tag_next_week_keeps_the_tightened_value(conn):
+    """2週続けて同じ札が最多なら、きつくした値のまま。ログに「6 → 6 にした」とは書かない。"""
+    week1 = tuning.week_start(now_jst() - timedelta(days=14)) + timedelta(hours=10)
+    for week in (week1, week1 + timedelta(days=7)):
+        for _ in range(3):
+            memo.add_memo(conn, Memo(stage="調査", tag="機会不足", reason="r", idea_summary="s"), at=week)
+        note = "\n".join(tuning.weekly(conn, now=week + timedelta(hours=1)))
+    assert "min_occurrences は 15 のまま" in note and "15 → 15" not in note
+    assert tuning.current(conn)["min_occurrences"] == 15
+
+
 def test_tightened_fee_multiple_is_used(conn, fake_ai, reader):
     conn.execute("INSERT INTO tuning_log(created_at, top_tag, setting, value, note) VALUES (?,?,?,?,?)",
                  (now_jst().isoformat(), "手数料負け", "fee_multiple", 4, "test"))
