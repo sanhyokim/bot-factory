@@ -47,7 +47,11 @@ def _one_type(conn: sqlite3.Connection, type_: str, now: datetime) -> str:
     before = current(conn, type_)
     if rule:
         setting, value = rule["setting"], float(rule["value"])
-        note = f"最多の札は{top}({counts[0]['n']}件)。{setting} を {before[setting]:g} → {value:g} にした"
+        head = f"最多の札は{top}({counts[0]['n']}件)。"
+        if before[setting] == value:    # 先週と同じ札。1段きつくした値のまま(重ねてきつくはしない)
+            note = head + f"{setting} は {value:g} のまま(先週きつくした値を続ける)"
+        else:
+            note = head + f"{setting} を {before[setting]:g} → {value:g} にした"
     else:
         setting, value = None, None
         changed = [k for k, v in before.items() if v != defaults(type_)[k]]
