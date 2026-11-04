@@ -221,6 +221,113 @@ def test_quota_message_on_logs_is_rate_not_range():
     assert a.log_limit is None and a.cooldown_until > clock.t
     assert relay.totals[(A, "research")]["rate_limited"] == 1
 
+def refuse(node, url, message, when=lambda body: True, code=-32000):
+    """url の接続先だけ、when に当たる呼び出しを message で断るようにする。"""
+    orig = node.answer
+
+    def answer(u, body):
+        if u == url and when(body):
+            return {"jsonrpc": "2.0", "id": body["id"], "error": {"code": code, "message": message}}
+        return orig(u, body)
+
+    node.answer = answer
+
+
+def old_block(body):
+    p = body["params"]
+    return body["method"] == "eth_call" and p[1] != "latest"
+
+
+def test_used_up_endpoint_rests_long():
+    node = FakeNode()
+    refuse(node, A, "You've reached the usage limit for your current plan")
+    clock = Clock()
+    relay = make_relay(node, urls=(A, B), clock=clock, cooldown_quota=1800)
+    assert relay.call("eth_blockNumber") == hex(100_000)
+    a = relay.endpoints[0]
+    assert a.cooldown_until == clock.t + 1800 and "usage limit" in a.quota_note
+    assert relay.totals[(A, "research")]["rate_limited"] == 1
+    clock.t += 120                                           # 1分休ませるだけなら、もう戻っている
+    node.calls.clear()
+    for _ in range(5):
+        relay.call("eth_blockNumber")
+    assert A not in [u for u, _ in node.calls]
+
+
+def test_endpoint_that_refuses_old_blocks_is_skipped_for_old_reads_only():
+    node = FakeNode()
+    refuse(node, A, "Archive requests require a personal token", old_block)
+    clock = Clock()
+    relay = make_relay(node, urls=(A, B), clock=clock, skip_after=3, skip_seconds=600)
+    old = [{"to": POOL, "data": "0x"}, hex(5)]
+    for _ in range(6):
+        assert relay.call("eth_call", old) == "0x" + f"{7:064x}"
+    a = relay.endpoints[0]
+    assert a.strikes["eth_call@old"] == 3 and a.blocked["eth_call@old"] == clock.t + 600
+    assert "personal token" in a.block_notes["eth_call@old"]
+    node.calls.clear()
+    for _ in range(5):
+        relay.call("eth_call", old)
+    assert [u for u, _ in node.calls] == [B] * 5             # 古いブロックの読み取りでは、もう A に行かない
+    node.calls.clear()
+    relay.call("eth_call", [{"to": POOL, "data": "0x"}, "latest"])
+    relay.call("eth_call", [{"to": POOL, "data": "0x"}, "latest"])
+    assert A in [u for u, _ in node.calls]                   # "latest" の読み取りは外さない
+    assert a.cooldown_until == 0                             # 休ませてはいない
+    clock.t += 601
+    node.calls.clear()
+    for _ in range(4):
+        relay.call("eth_call", old)
+    assert [u for u, _ in node.calls].count(A) == 1          # 10分たったら1回だけ試し、また外す
+    assert a.blocked["eth_call@old"] > clock.t
+
+
+def test_old_reads_are_not_skipped_when_no_endpoint_can_serve_them():
+    node = FakeNode()
+    for u in (A, B):
+        refuse(node, u, "missing trie node", old_block)
+    relay = make_relay(node, urls=(A, B))
+    for _ in range(5):
+        with pytest.raises(RpcError, match="missing trie node"):
+            relay.call("eth_call", [{"to": POOL, "data": "0x"}, hex(5)])
+    assert all(not ep.blocked for ep in relay.endpoints)    # 全部断るなら、頼み方の方を疑う(外さない)
+    assert len(node.calls) == 10
+
+
+def test_success_clears_the_count_of_refusals():
+    node = FakeNode()
+    flaky = {"on": True}
+    refuse(node, A, "header not found", lambda body: flaky["on"] and body["method"] == "eth_getBlockByNumber")
+    relay = make_relay(node, urls=(A, B), skip_after=3)
+    for _ in range(2):
+        relay.call("eth_getBlockByNumber", [hex(9), False])
+    a = relay.endpoints[0]
+    assert a.strikes["eth_getBlockByNumber@old"] == 2
+    flaky["on"] = False
+    for _ in range(4):
+        relay.call("eth_getBlockByNumber", [hex(9), False])
+    assert a.strikes["eth_getBlockByNumber@old"] == 0 and not a.blocked
+
+
+def test_broken_endpoint_rests_longer_each_time():
+    node = FakeNode()
+    node.mode[A] = "down"
+    clock = Clock()
+    relay = make_relay(node, urls=(A, B), clock=clock, cooldown_error=30)
+    a = relay.endpoints[0]
+    rests = []
+    for _ in range(6):
+        start = clock.t
+        relay.call("eth_chainId")
+        assert node.calls[-2][0] == A                        # 休みが明けるたびに1回試す
+        rests.append(a.cooldown_until - start)
+        clock.t = a.cooldown_until + 1
+    assert rests == [30, 60, 120, 240, 480, 600]             # 上限は10分
+    node.mode[A] = "ok"
+    relay.call("eth_chainId")
+    assert a.error_streak == 0
+
+
 def test_only_settled_blocks_are_cached(tmp_path):
     node = FakeNode(head=10_000)
     cache = ChainCache(tmp_path / "cache.db")
@@ -264,6 +371,29 @@ def test_chain_check_reports_endpoints_and_liquidators(conn, tmp_path, monkeypat
     assert LIQUIDATOR in text
     assert "回線を使った回数 0回" in text
     assert conn.execute("SELECT SUM(cache_hits) FROM rpc_usage").fetchone()[0] > 0
+
+
+def test_chain_check_lists_endpoints_skipped_for_old_reads(conn, tmp_path, monkeypatch):
+    node = FakeNode(head=400_000)
+    node.max_range[A] = 50_000
+    refuse(node, B, "Archive requests require a personal token",
+           lambda body: body["method"] in ("eth_getLogs", "eth_getBlockByNumber"))
+    refuse(node, C, "You've reached the usage limit for your current plan")
+    node.logs = [liquidation_log(397_000)]
+    cfg = config.load_config()
+    chain_cfg = {**cfg["onchain"]["chains"]["arbitrum"], "endpoints": [A, B, C]}
+    monkeypatch.setattr(config, "load_config",
+                        lambda *a: {**cfg, "onchain": {**cfg["onchain"], "chains": {"arbitrum": chain_cfg}}})
+    lines: list[str] = []
+    cache = ChainCache(tmp_path / "cache.db")
+    ok = check.run("arbitrum", 24, client=node.client(), cache=cache, usage_conn=conn, out=lines.append)
+    cache.close()
+    text = "\n".join(lines)
+    assert ok, text
+    assert "eth_getLogs(古いブロック)「Archive requests require a personal token」" in text
+    assert "使える量を使い切ったと言われた接続先(30分休ませた)" in text
+    relayed = [m for u, m in node.calls if u == B and m == "eth_getLogs"]
+    assert len(relayed) == 6 + 3                             # 直接の確かめ6回(広さを変えて) + 外すまでの3回
 
 
 def test_chain_check_stops_when_no_endpoint_answers(tmp_path, monkeypatch):

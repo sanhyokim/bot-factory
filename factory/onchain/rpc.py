@@ -3,8 +3,11 @@
 読み込みを1か所で受け、無料の公開接続先に振り分ける。
 - 接続先ごとに1分あたりの回数の枠を持ち、使い道(本番 > paper > 調査)ごとに使ってよい割合を分ける。
   調査が自分の分を使い切っても、paper と本番の分は残る(作者は回線の詰まりで同時に動けるBOTが約70本で止まった)
-- 断られた接続先(429)は60秒、つながらない・壊れた答え(5xx・時間切れ)は30秒休ませ、次の接続先へ回す
+- 断られた接続先(429)は60秒、使える量を使い切った接続先(1日・プランの上限)は30分休ませる
+- つながらない・壊れた答え(5xx・時間切れ)は30秒休ませ、続けば60秒・120秒…(10分まで)と延ばす
 - 「取引が通らない(revert)」「ログの範囲が広すぎる」は接続先の不調ではないので休ませず、呼んだ側に返す
+- 同じ読み方(例: 古いブロックの状態)を3回続けて断った接続先は、ほかの接続先がその読み方に答えられるなら、
+  その読み方の時だけ10分外す(無料の接続先は古いブロックを読ませないことが多く、毎回試すと回数の無駄)
 - 待てる長さは使い道ごとに違う。本番は機会が消えるので短く、調査は急がないので長く待つ
 - 変わらない答え(確定したブロックの読み取り)はキャッシュから返す。何をキャッシュするかは chain.py が決める
 - 使った回数を接続先・使い道ごとに帳簿(rpc_usage)に残す
@@ -37,8 +40,9 @@ DEFAULT_WAITS = {"live": 2.0, "paper": 30.0, "research": 120.0}
 SEND_METHODS = frozenset({"eth_sendRawTransaction", "eth_sendTransaction", "eth_sign", "eth_signTransaction",
                           "eth_signTypedData", "eth_signTypedData_v4", "personal_sign"})
 
-_RATE = re.compile(r"rate|too many requests|requests per|throttl|capacity|credits|quota|daily|monthly"
-                   r"|limit reached", re.IGNORECASE)
+_RATE = re.compile(r"rate|too many requests|requests per|throttl|capacity|limit reached", re.IGNORECASE)
+# 使える量を使い切った(1日・1か月・プランの上限)。すぐには戻らないので長く休ませる
+_QUOTA = re.compile(r"usage limit|quota|daily|monthly|credits|current plan|upgrade your plan", re.IGNORECASE)
 _REVERT = re.compile(r"execution reverted|\breverted\b", re.IGNORECASE)
 # eth_getLogs で範囲が広すぎる・件数が多すぎると断られた時の言い方(接続先ごとに違う)。
 # 「使いすぎ」の言い方(limit exceeded など)と取り違えないよう、範囲・件数を言うものだけにする
@@ -47,6 +51,11 @@ _RANGE = re.compile(r"range|too many (blocks|results|logs)|more than \d+|max(imu
 _NUMBER = re.compile(r"\d[\d,]*")
 
 CACHE_ENDPOINT = "cache"
+MAX_ERROR_COOLDOWN = 600.0     # つながらないのが続いた時に休ませる長さの上限(秒)
+
+# ブロックを指して読む呼び方と、ブロックの引数の位置(古いブロックを指す時だけ別の読み方として数える)
+_BLOCK_ARG = {"eth_call": 1, "eth_getCode": 1, "eth_getBalance": 1, "eth_getTransactionCount": 1,
+              "eth_getStorageAt": 2, "eth_getBlockByNumber": 0}
 
 
 class RpcError(RuntimeError):
@@ -90,6 +99,12 @@ class Endpoint:
     last_error: str = ""
     log_limit: int | None = None     # ログを1回で読めるブロック数(断られて分かった上限。None は分かっていない)
     log_note: str = ""               # 範囲で断られた時の言い方(画面・確かめに出す)
+    error_streak: int = 0            # つながらない・壊れた答えが続いた回数(休ませる長さを倍にしていく)
+    quota_note: str = ""             # 使える量を使い切ったと言われた時の言い方
+    strikes: Counter = field(default_factory=Counter)        # 読み方 → 続けてはっきり断った回数
+    served: set = field(default_factory=set)                 # 答えを返せた読み方
+    blocked: dict = field(default_factory=dict)              # 読み方 → この時刻まで、その読み方では使わない
+    block_notes: dict = field(default_factory=dict)          # 読み方 → 断られた言い方
 
     def fits(self, span: int | None) -> bool:
         return span is None or self.log_limit is None or span <= self.log_limit
@@ -99,7 +114,8 @@ class Relay:
     def __init__(self, chain: str, endpoints: list[str], *, client: httpx.Client | None = None,
                  cache: ChainCache | None = None, usage_conn: sqlite3.Connection | None = None,
                  per_minute: int = 300, shares: dict | None = None, waits: dict | None = None,
-                 cooldown_rate: float = 60.0, cooldown_error: float = 30.0, timeout: float = 15.0,
+                 cooldown_rate: float = 60.0, cooldown_error: float = 30.0, cooldown_quota: float = 1800.0,
+                 skip_after: int = 3, skip_seconds: float = 600.0, timeout: float = 15.0,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep):
         if not endpoints:
             raise ValueError(f"{chain}: 接続先がない")
@@ -110,7 +126,8 @@ class Relay:
         self.per_minute = per_minute
         self.shares = {**DEFAULT_SHARES, **(shares or {})}
         self.waits = {**DEFAULT_WAITS, **(waits or {})}
-        self.cooldown_rate, self.cooldown_error = cooldown_rate, cooldown_error
+        self.cooldown_rate, self.cooldown_error, self.cooldown_quota = cooldown_rate, cooldown_error, cooldown_quota
+        self.skip_after, self.skip_seconds = skip_after, skip_seconds
         self._clock, self._sleep = clock, sleep
         self._ids = itertools.count(1)
         self._pending: dict[tuple[str, str], Counter] = {}   # 帳簿にまだ書いていない回数
@@ -124,6 +141,8 @@ class Relay:
                    shares=rpc.get("shares"), waits=rpc.get("wait_seconds"),
                    cooldown_rate=rpc.get("cooldown_rate_seconds", 60),
                    cooldown_error=rpc.get("cooldown_error_seconds", 30),
+                   cooldown_quota=rpc.get("cooldown_quota_seconds", 1800),
+                   skip_after=rpc.get("skip_after_failures", 3), skip_seconds=rpc.get("skip_seconds", 600),
                    timeout=rpc.get("timeout_seconds", 15), **kw)
 
     # --- 呼び出し ---
@@ -156,9 +175,10 @@ class Relay:
         tried: set[str] = set()
         skip: set[str] = set()       # はっきり断られた(古い状態が無い など)接続先。休ませないが、この呼び出しでは使わない
         span = _log_span(method, params)
+        kind = _kind(method, params)
         attempts, max_attempts = 0, 2 * len(self.endpoints)
         while attempts < max_attempts:
-            ep, wait = self._pick(purpose, tried, skip, span)
+            ep, wait = self._pick(purpose, tried, skip, span, kind)
             if ep is None:
                 if wait == math.inf:
                     break
@@ -170,7 +190,7 @@ class Relay:
             attempts += 1
             tried.add(ep.url)
             try:
-                return self._send(ep, method, params, purpose)
+                return self._send(ep, method, params, purpose, kind)
             except _TryNext as e:
                 if e.hard:
                     skip.add(ep.url)
@@ -182,10 +202,11 @@ class Relay:
                                 max(limits) if limits else None)
         raise RpcError(f"{self.chain}: {method} が{attempts}回とも失敗した。直近のエラー: {self._last_errors()}")
 
-    def _pick(self, purpose: str, tried: set[str], skip: set[str],
-              span: int | None = None) -> tuple[Endpoint | None, float]:
+    def _pick(self, purpose: str, tried: set[str], skip: set[str], span: int | None = None,
+              kind: str | None = None) -> tuple[Endpoint | None, float]:
         """使える接続先のうち、まだ試していない・直近1分に使った回数が少ないものを選ぶ。
-        使えるものが無ければ、一番早く使えるようになるまでの秒数を返す(もう使える接続先が無ければ inf)。"""
+        使えるものが無ければ、一番早く使えるようになるまでの秒数を返す(もう使える接続先が無ければ inf)。
+        この読み方を続けて断っている接続先(blocked)は、外している間は数えない。"""
         now = self._clock()
         cap = max(1, int(self.per_minute * self.shares[purpose]))
         ready, waits = [], [math.inf]
@@ -193,6 +214,8 @@ class Relay:
             while ep.recent and now - ep.recent[0][0] >= 60:
                 ep.recent.popleft()
             if ep.url in skip or not ep.fits(span):     # ログの範囲が、この接続先の上限より広い
+                continue
+            if kind is not None and ep.blocked.get(kind, 0) > now:
                 continue
             mine = [t for t, p in ep.recent if p == purpose]
             if ep.cooldown_until > now:
@@ -205,7 +228,8 @@ class Relay:
             return min(ready, key=lambda r: r[:3])[3], 0.0
         return None, min(waits)
 
-    def _send(self, ep: Endpoint, method: str, params: list, purpose: str):
+    def _send(self, ep: Endpoint, method: str, params: list, purpose: str, kind: str | None = None):
+        kind = kind or _kind(method, params)
         start = self._clock()
         ep.recent.append((start, purpose))
         self._count(ep.url, purpose, "calls")
@@ -213,24 +237,28 @@ class Relay:
         try:
             r = self.client.post(ep.url, json=body)
         except httpx.TimeoutException:
-            self._fail(ep, purpose, self.cooldown_error, "時間切れ")
+            self._broken(ep, purpose, "時間切れ")
         except httpx.HTTPError as e:
-            self._fail(ep, purpose, self.cooldown_error, f"つながらない({type(e).__name__})")
+            self._broken(ep, purpose, f"つながらない({type(e).__name__})")
         finally:
             self._count(ep.url, purpose, "total_ms", int((self._clock() - start) * 1000))
         if r.status_code == 429:
+            if _QUOTA.search(r.text):
+                self._used_up(ep, purpose, r.text)
             self._fail(ep, purpose, self.cooldown_rate, "断られた(HTTP 429)", rate=True)
         try:
             data = r.json()
         except ValueError:
             data = None
         if not isinstance(data, dict) or ("error" not in data and r.status_code >= 400):
-            self._fail(ep, purpose, self.cooldown_error, f"HTTP {r.status_code}")
+            self._broken(ep, purpose, f"HTTP {r.status_code}")
+        ep.error_streak = 0                  # 答えは返ってきた(つながる)
         err = data.get("error")
         if err:
             msg = str(err.get("message", err)) if isinstance(err, dict) else str(err)
             code = err.get("code") if isinstance(err, dict) else None
             if code == 3 or _REVERT.search(msg):
+                self._served(ep, kind)       # 取引を試せた(接続先は答えられる)
                 raise CallReverted(msg, err.get("data") if isinstance(err, dict) else None)
             span = _log_span(method, params)
             if span is not None and _RANGE.search(msg):
@@ -238,15 +266,46 @@ class Relay:
                 ep.log_limit = min(ep.log_limit or span, _limit_from(msg, span))
                 ep.log_note = msg[:120]
                 self._fail(ep, purpose, 0, f"ログの範囲で断られた({msg[:80]})", hard=True)
+            if _QUOTA.search(msg):
+                self._used_up(ep, purpose, msg)
             if code == 429 or _RATE.search(msg):
                 self._fail(ep, purpose, self.cooldown_rate, f"断られた({msg[:80]})", rate=True)
             if code == -32005:      # 多くの接続先で「使いすぎ」
                 self._fail(ep, purpose, self.cooldown_rate, f"断られた({msg[:80]})", rate=True)
-            # その他(古いブロックの状態が無い、呼び方を知らない など)は、休ませずに次の接続先へ
+            # その他(古いブロックの状態が無い、呼び方を知らない など)は、休ませずに次の接続先へ。
+            # 同じ読み方で続けば、その読み方の時だけしばらく外す
+            self._strike(ep, kind, msg)
             self._fail(ep, purpose, 0, msg[:120], hard=True)
         if "result" not in data:
-            self._fail(ep, purpose, self.cooldown_error, "答えに result が無い")
+            self._broken(ep, purpose, "答えに result が無い")
+        self._served(ep, kind)
         return data["result"]
+
+    def _broken(self, ep: Endpoint, purpose: str, reason: str):
+        """つながらない・壊れた答え。続くほど長く休ませる(30秒・60秒・120秒…上限10分)。"""
+        cooldown = min(self.cooldown_error * 2 ** ep.error_streak, max(self.cooldown_error, MAX_ERROR_COOLDOWN))
+        ep.error_streak += 1
+        self._fail(ep, purpose, cooldown, reason)
+
+    def _used_up(self, ep: Endpoint, purpose: str, msg: str):
+        """使える量を使い切った(1日・プランの上限)。すぐには戻らないので長く休ませる。"""
+        ep.quota_note = msg[:120]
+        self._fail(ep, purpose, self.cooldown_quota, f"使える量を使い切った({msg[:80]})", rate=True)
+
+    def _served(self, ep: Endpoint, kind: str):
+        ep.served.add(kind)
+        ep.strikes.pop(kind, None)
+
+    def _strike(self, ep: Endpoint, kind: str, msg: str):
+        """この読み方を続けて断った回数を数え、skip_after 回続いたら skip_seconds 秒外す。
+        ほかに、この読み方に答えられて外れていない接続先がある時だけ外す(全部断るなら、頼み方の方が悪い)。"""
+        ep.strikes[kind] += 1
+        if ep.strikes[kind] < self.skip_after:
+            return
+        now = self._clock()
+        if any(o is not ep and kind in o.served and o.blocked.get(kind, 0) <= now for o in self.endpoints):
+            ep.blocked[kind] = now + self.skip_seconds
+            ep.block_notes[kind] = msg[:120]
 
     def _fail(self, ep: Endpoint, purpose: str, cooldown: float, reason: str, *, rate: bool = False,
               hard: bool = False):
@@ -299,6 +358,23 @@ def _log_span(method: str, params: list) -> int | None:
     if not (isinstance(lo, str) and isinstance(hi, str) and lo.startswith("0x") and hi.startswith("0x")):
         return None
     return int(hi, 16) - int(lo, 16) + 1
+
+
+def _kind(method: str, params: list) -> str:
+    """読み方の種類。ブロックの番号を指す読み方は「@old」を付けて分ける(古いブロックを読ませない接続先が多い)。
+    "latest" で読む呼び方は、古いブロックで断られ続けても外さない。"""
+    if method == "eth_getLogs":
+        old = _log_span(method, params) is not None
+    else:
+        i = _BLOCK_ARG.get(method)
+        tag = params[i] if i is not None and len(params) > i else None
+        old = isinstance(tag, str) and tag.startswith("0x")
+    return f"{method}@old" if old else method
+
+
+def kind_name(kind: str) -> str:
+    """画面に出す読み方の名前。"""
+    return kind.replace("@old", "(古いブロック)")
 
 
 def _limit_from(msg: str, span: int) -> int:

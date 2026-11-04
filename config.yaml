@@ -130,7 +130,10 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
     shares: {live: 0.2, paper: 0.3, research: 0.5}       # 使い道ごとに使ってよい割合(本番 > paper > 調査)
     wait_seconds: {live: 2, paper: 30, research: 120}    # どの接続先も使えない時に待つ長さ
     cooldown_rate_seconds: 60    # 断られた(429)接続先を休ませる秒数
-    cooldown_error_seconds: 30   # つながらない・壊れた答えの接続先を休ませる秒数
+    cooldown_error_seconds: 30   # つながらない・壊れた答えの接続先を休ませる秒数(続けば倍にしていく。上限10分)
+    cooldown_quota_seconds: 1800 # 使える量を使い切った(1日・プランの上限)と言われた接続先を休ませる秒数
+    skip_after_failures: 3       # 同じ読み方(古いブロックなど)をこの回数続けて断った接続先は
+    skip_seconds: 600            #   ほかの接続先が答えられるなら、その読み方の時だけこの秒数外す
   watch:                    # 機会の見張り(Aave の清算)
     borrower_days: 90       # 借りた記録をさかのぼる日数(これより前に借りて、その後借りていない借り手は見えない)
     multicall_batch: 100    # 健康度を1回でまとめて読む人数
