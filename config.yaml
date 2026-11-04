@@ -121,3 +121,29 @@ watchdog:                   # 見張り役(SPEC 3.3)。python -m factory watchdo
   processes:                # 見張るプロセス: 名前 → python に渡す引数
     dashboard: [-m, factory, dashboard]
     feed: [-m, factory, feed]
+
+onchain:                    # チェーン上の道具(設計書 2026-11-04 の第0期)。読み取りだけで、鍵もお金も使わない
+  cache_path: data/chain_cache.db   # 確定したブロックの読み取りのキャッシュ(消しても読み直すだけ)
+  rpc:
+    timeout_seconds: 15
+    per_minute: 300         # 1つの接続先に1分で送る回数の上限(無料の接続先の上限は公表されていないので控えめに)
+    shares: {live: 0.2, paper: 0.3, research: 0.5}       # 使い道ごとに使ってよい割合(本番 > paper > 調査)
+    wait_seconds: {live: 2, paper: 30, research: 120}    # どの接続先も使えない時に待つ長さ
+    cooldown_rate_seconds: 60    # 断られた(429)接続先を休ませる秒数
+    cooldown_error_seconds: 30   # つながらない・壊れた答えの接続先を休ませる秒数
+  chains:
+    arbitrum:
+      chain_id: 42161
+      block_seconds: 0.25   # 1ブロックの時間の目安
+      cache_depth: 2400     # 最新からこのブロック数(約10分)より古いブロックは確定とみなしてキャッシュする
+      max_log_blocks: 10000 # ログを1回で読むブロック数。接続先に広すぎると断られたら半分ずつにする
+      endpoints:            # 無料の公開接続先。上から順ではなく、空いている所に回す
+        - https://arb1.arbitrum.io/rpc
+        - https://arbitrum-one-rpc.publicnode.com
+        - https://arbitrum.drpc.org
+        - https://1rpc.io/arb
+        - https://arbitrum.llamarpc.com
+        - https://arbitrum-one.public.blastapi.io
+      protocols:
+        aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"   # 貸し借りの仕組み(清算の記録を出す)
+        weth: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"           # ガス代をドルにする時の ETH の値段に使う
