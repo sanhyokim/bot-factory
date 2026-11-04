@@ -1,7 +1,4 @@
 """チェーンの道具(第0期): Keccak・回線の中継・読み取り・キャッシュ・回線の確かめ。ネットにはつながない。"""
-import json
-
-import httpx
 import pytest
 
 from factory import config
@@ -10,94 +7,16 @@ from factory.onchain.cache import ChainCache
 from factory.onchain.chain import Chain
 from factory.onchain.keccak import keccak256
 from factory.onchain.rpc import AllBusy, CallReverted, RangeTooLarge, Relay, RpcError
-
-A = "https://a.example/rpc"
-B = "https://b.example/rpc"
-C = "https://c.example/rpc"
-POOL = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-LIQUIDATOR = "0x" + "ab" * 20
-
-
-class Clock:
-    def __init__(self):
-        self.t = 1000.0
-
-    def __call__(self):
-        return self.t
-
-    def sleep(self, s):
-        self.t += s
-
-
-class FakeNode:
-    """偽の接続先。URL ごとに振る舞いを変えられる。"""
-
-    def __init__(self, head=100_000):
-        self.head = head
-        self.calls: list[tuple[str, str]] = []           # (URL, 呼び方)
-        self.mode: dict[str, str] = {}                     # URL → ok / rate / down / http500 / archive
-        self.max_range: dict[str, int] = {}                # URL → eth_getLogs で読める最大ブロック数
-        self.logs: list[dict] = []
-        self.revert = False
-
-    def client(self):
-        return httpx.Client(transport=httpx.MockTransport(self.handle))
-
-    def handle(self, request: httpx.Request):
-        url = str(request.url)
-        body = json.loads(request.content)
-        for b in body if isinstance(body, list) else [body]:
-            self.calls.append((url, b["method"]))
-        mode = self.mode.get(url, "ok")
-        if mode == "down":
-            raise httpx.ConnectError("つながらない", request=request)
-        if mode == "timeout":
-            raise httpx.ReadTimeout("時間切れ", request=request)
-        if mode == "rate":
-            return httpx.Response(429, text="Too Many Requests")
-        if mode == "http500":
-            return httpx.Response(502, text="bad gateway")
-        if isinstance(body, list):
-            return httpx.Response(200, json=[self.answer(url, b) for b in body])
-        if mode == "archive" and body["method"] == "eth_call":
-            return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"],
-                                             "error": {"code": -32000, "message": "missing trie node"}})
-        return httpx.Response(200, json=self.answer(url, body))
-
-    def answer(self, url, body):
-        m, p, i = body["method"], body["params"], body["id"]
-        ok = lambda r: {"jsonrpc": "2.0", "id": i, "result": r}
-        if m == "eth_chainId":
-            return ok(hex(42161))
-        if m == "eth_blockNumber":
-            return ok(hex(self.head))
-        if m == "eth_getBlockByNumber":
-            n = int(p[0], 16)
-            return ok(None if n > self.head else {"number": p[0], "timestamp": hex(1_793_750_000 + n)})
-        if m == "eth_getCode":
-            return ok("0x6080")
-        if m == "eth_getTransactionReceipt":
-            return ok({"transactionHash": p[0], "blockNumber": hex(int(p[0][-4:], 16)), "status": "0x1"})
-        if m == "eth_call":
-            if self.revert:
-                return {"jsonrpc": "2.0", "id": i, "error": {"code": 3, "message": "execution reverted",
-                                                            "data": "0x08c379a0"}}
-            return ok("0x" + f"{7:064x}")
-        if m == "eth_getLogs":
-            lo, hi = int(p[0]["fromBlock"], 16), int(p[0]["toBlock"], 16)
-            limit = self.max_range.get(url)
-            if limit and hi - lo + 1 > limit:
-                return {"jsonrpc": "2.0", "id": i,
-                        "error": {"code": -32602, "message": f"exceed maximum block range: {limit}"}}
-            return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi])
-        return {"jsonrpc": "2.0", "id": i, "error": {"code": -32601, "message": "method not found"}}
-
-
-def liquidation_log(block: int, liquidator: str = LIQUIDATOR) -> dict:
-    data = "0x" + f"{10**6:064x}" + f"{2 * 10**6:064x}" + liquidator[2:].rjust(64, "0") + f"{0:064x}"
-    return {"address": POOL.lower(), "blockNumber": hex(block),
-            "topics": [check.LIQUIDATION_CALL, "0x" + "00" * 32, "0x" + "00" * 32, "0x" + "00" * 32],
-            "data": data}
+from tests.fakes_chain import (
+    LIQUIDATOR,
+    POOL,
+    A,
+    B,
+    C,
+    Clock,
+    FakeNode,
+    liquidation_log,
+)
 
 
 def make_relay(node, urls=(A, B, C), clock=None, **kw):
@@ -300,10 +219,6 @@ def test_chain_check_reports_endpoints_and_liquidators(conn, tmp_path, monkeypat
     assert LIQUIDATOR in text
     assert "回線を使った回数 0回" in text
     assert conn.execute("SELECT SUM(cache_hits) FROM rpc_usage").fetchone()[0] > 0
-
-
-def test_liquidator_is_read_from_log_data():
-    assert check.liquidator_of(liquidation_log(1)) == LIQUIDATOR
 
 
 def test_chain_check_stops_when_no_endpoint_answers(tmp_path, monkeypatch):

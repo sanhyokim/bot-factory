@@ -55,3 +55,16 @@ def encode_call(signature: str, *args: int | str | bool) -> str:
             v = int(address(a), 16)
         out.append(f"{v:064x}")
     return "0x" + "".join(out)
+
+
+def decode_string(data: str) -> str:
+    """文字の答え(symbol() など)を読む。古い仕組みの32バイト固定の形にも合わせる。"""
+    h = data[2:] if data.startswith(("0x", "0X")) else data
+    raw = bytes.fromhex(h)
+    if len(raw) == 32:
+        return raw.rstrip(b"\x00").decode("utf-8", "replace")
+    if len(raw) < 64:
+        raise ValueError("文字の答えではない")
+    offset = int.from_bytes(raw[:32], "big")
+    length = int.from_bytes(raw[offset:offset + 32], "big")
+    return raw[offset + 32:offset + 32 + length].decode("utf-8", "replace")

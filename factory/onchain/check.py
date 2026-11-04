@@ -17,17 +17,11 @@ import httpx
 
 from .. import config
 from ..models import JST
-from .abi import address, to_int, topic, words
+from .abi import to_int
+from .actors import LIQUIDATION_CALL, parse_liquidation
 from .cache import ChainCache
 from .chain import Chain
 from .rpc import PURPOSE_NAMES, Relay, RpcError, _short, probe
-
-LIQUIDATION_CALL = topic("LiquidationCall(address,address,address,uint256,uint256,address,bool)")
-
-
-def liquidator_of(log: dict) -> str:
-    """Aave v3 の清算の記録から、清算した主体(liquidator)を取り出す。"""
-    return address(f"{words(log['data'])[2]:064x}")
 
 
 def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client | None = None,
@@ -73,7 +67,7 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
                 ok = False
             else:
                 logs = chain.logs(from_block=start, to_block=safe, address=pool, topics=[LIQUIDATION_CALL])
-                who = Counter(liquidator_of(lg) for lg in logs)
+                who = Counter(parse_liquidation(lg).liquidator for lg in logs)
                 out(f"  Aave v3 の清算の記録(直近{hours:g}時間、ブロック {start:,}〜{safe:,}): {len(logs)}件、"
                     f"清算した主体 {len(who)}件。1回で読んだブロック数 {chain.log_step:,}")
                 for addr, n in who.most_common(3):

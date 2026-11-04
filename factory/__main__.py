@@ -70,6 +70,11 @@ def main(argv: list[str] | None = None) -> int:
     cc.add_argument("--chain", default="arbitrum")
     cc.add_argument("--hours", type=float, default=24, help="清算の記録を読む時間の長さ")
 
+    ac = sub.add_parser("actor-scan", help="清算で稼いでいる主体を探し、型に分ける(読み取りだけ。第0期)")
+    ac.add_argument("--chain", default="arbitrum")
+    ac.add_argument("--days", type=float, default=7, help="さかのぼる日数")
+    ac.add_argument("--top", type=int, default=15, help="表に出す主体の数")
+
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
     sub.add_parser("feed", help="価格の受け取り口: 動いているBOTの銘柄の価格を決まった間隔で取り込む(見張り役が起こす)")
     sub.add_parser("watchdog", help="見張り役: 画面と価格の受け取り口を起こし、落ちたら再起動する")
@@ -121,6 +126,9 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             cache.close()
             conn.close()
+    if args.cmd == "actor-scan":
+        from .onchain import scan_command
+        return scan_command.run(args.chain, args.days, args.top)
     if args.cmd == "run-daily":
         from .runner import run_daily
         run_daily(wait_minutes=args.wait_minutes, skip_explore=args.skip_explore)
