@@ -212,18 +212,12 @@ class Scanner:
             logs = self.chain.logs(from_block=start, to_block=end, address=self.pool,
                                    topics=[LIQUIDATION_CALL], purpose=self.purpose)
             added += self._record([parse_liquidation(lg) for lg in logs])
-            self.conn.execute(
-                """INSERT INTO chain_scans(chain, protocol, first_block, last_block) VALUES (?,?,?,?)
-                   ON CONFLICT(chain, protocol) DO UPDATE SET last_block = MAX(last_block, excluded.last_block)""",
-                (self.chain.name, PROTOCOL, from_block, end))
-            self.conn.commit()
+            mark_progress(self.conn, self.chain.name, PROTOCOL, from_block, end)
             done += 1
             if done % 10 == 0 and done < windows:
                 self.out(f"  {done}/{windows} 区切りを読んだ(ブロック {end:,} まで、新しい清算 {added}件)")
             start = end + 1
-        self.conn.execute("UPDATE chain_scans SET first_block = MIN(first_block, ?) WHERE chain = ? AND protocol = ?",
-                          (from_block, self.chain.name, PROTOCOL))
-        self.conn.commit()
+        finish_progress(self.conn, self.chain.name, PROTOCOL, from_block)
         return added
 
     def _record(self, events: list[Liquidation]) -> int:
@@ -269,13 +263,14 @@ class Scanner:
         return len(new)
 
 
-def plan(conn: sqlite3.Connection, chain: str, start: int, end: int) -> list[tuple[int, int]]:
-    """[start, end] のうち、まだ読んでいない範囲。前に読んだ範囲とつながらなければ、前の記録は忘れて読み直す。"""
+def plan(conn: sqlite3.Connection, chain: str, start: int, end: int, key: str = PROTOCOL) -> list[tuple[int, int]]:
+    """[start, end] のうち、まだ読んでいない範囲。前に読んだ範囲とつながらなければ、前の記録は忘れて読み直す。
+    key は何を読んだかの名前(清算は aave_v3、借り手は aave_v3_borrow など)。"""
     ensure_schema(conn)
     row = conn.execute("SELECT first_block, last_block FROM chain_scans WHERE chain = ? AND protocol = ?",
-                       (chain, PROTOCOL)).fetchone()
+                       (chain, key)).fetchone()
     if row is None or row[1] < start - 1 or row[0] > end + 1:
-        conn.execute("DELETE FROM chain_scans WHERE chain = ? AND protocol = ?", (chain, PROTOCOL))
+        conn.execute("DELETE FROM chain_scans WHERE chain = ? AND protocol = ?", (chain, key))
         conn.commit()
         return [(start, end)] if start <= end else []
     first, last = row
@@ -285,6 +280,22 @@ def plan(conn: sqlite3.Connection, chain: str, start: int, end: int) -> list[tup
     if last < end:
         ranges.append((max(start, last + 1), end))
     return ranges
+
+
+def mark_progress(conn: sqlite3.Connection, chain: str, key: str, from_block: int, end: int) -> None:
+    """[from_block, end] まで読み終えた(区切りごとに呼ぶ)。"""
+    conn.execute(
+        """INSERT INTO chain_scans(chain, protocol, first_block, last_block) VALUES (?,?,?,?)
+           ON CONFLICT(chain, protocol) DO UPDATE SET last_block = MAX(last_block, excluded.last_block)""",
+        (chain, key, from_block, end))
+    conn.commit()
+
+
+def finish_progress(conn: sqlite3.Connection, chain: str, key: str, from_block: int) -> None:
+    """範囲を最後まで読んだ(前にさかのぼって読んだ時は、読んだ範囲の始まりを広げる)。"""
+    conn.execute("UPDATE chain_scans SET first_block = MIN(first_block, ?) WHERE chain = ? AND protocol = ?",
+                 (from_block, chain, key))
+    conn.commit()
 
 
 def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> list[dict]:

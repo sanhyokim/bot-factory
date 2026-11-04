@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 
 from .. import config, db, logs
+from ..models import now_jst
 from . import actors
 from .cache import ChainCache
 from .chain import Chain
@@ -49,6 +50,76 @@ def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: 
         chain.relay.flush()
         if lines:
             logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()
+
+
+def run_watch(chain_name: str = "arbitrum", *, every: float = 0, rounds: int | None = None,
+              chain: Chain | None = None, conn=None, out: Callable[[str], None] | None = None,
+              sleep: Callable[[float], None] = time.sleep) -> int:
+    """python -m factory aave-watch: 借り手を集め → 健康度を読み → 清算の記録を読み → 誰が取ったかを照らす。
+    every > 0 なら、その秒数ごとにくり返す(rounds 回で止める。None なら Ctrl+C まで)。"""
+    from . import watch
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    cfg = config.load_config()["onchain"]
+    block_seconds = cfg["chains"][chain_name].get("block_seconds", 0.25)
+    days = cfg.get("watch", {}).get("borrower_days", 90)
+    watcher = watch.Watcher.from_config(conn, chain)
+    scanner = actors.Scanner.from_config(conn, chain, out=say)
+    done = 0
+    code = 0
+    try:
+        while True:
+            try:
+                head = chain.head()
+                start = max(0, head - int(days * 86400 / block_seconds) + 1)
+                ranges = actors.plan(conn, chain_name, start, head, key=watch.BORROW_KEY)
+                todo = sum(b - a + 1 for a, b in ranges)
+                if done == 0:
+                    say(f"借りた記録を読む: ブロック {start:,}〜{head:,}(まだ読んでいない {todo:,}ブロック"
+                        + ("。初回は時間がかかる)" if todo * block_seconds > 86400 else ")"))
+                new = sum(watcher.discover(a, b) for a, b in ranges)
+                st = watcher.sweep()
+                liq_start = max(0, head - int(86400 / block_seconds) + 1)
+                for a, b in actors.plan(conn, chain_name, liq_start, st["head"]):
+                    scanner.scan(a, b)
+                res = watcher.resolve(st["recovered"])
+                say(f"[{now_jst().strftime('%H:%M:%S')}] ブロック {st['head']:,}: 借り手 {st['borrowers']}人(新しく{new}人)、"
+                    f"健康度を読んだ {st['read']}人(借金あり {st['with_debt']}人)。"
+                    f"1未満 {st['under']}人(新しい機会 {st['found']}件)、1〜1.02 {st['near']}人。"
+                    f"取られた {res['captured']}件、消えた {res['vanished']}件")
+                if done == 0 or (every and done % 30 == 0):
+                    for line in watch.report(conn, chain_name):
+                        say(line)
+            except RpcError as e:
+                say(f"エラー: {e}(読み終えた所までは残っている。次の回は続きから読む)")
+                code = 1
+            done += 1
+            if not every or (rounds is not None and done >= rounds):
+                return code
+            chain.relay.flush()
+            if lines:
+                logs.write(PROCESS, "\n".join(lines), stage="機会の見張り")
+                lines.clear()
+            sleep(every)
+    except KeyboardInterrupt:
+        return code
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="機会の見張り")
         if cache is not None:
             cache.close()
         if own:

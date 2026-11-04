@@ -68,3 +68,40 @@ def decode_string(data: str) -> str:
     offset = int.from_bytes(raw[:32], "big")
     length = int.from_bytes(raw[offset:offset + 32], "big")
     return raw[offset + 32:offset + 32 + length].decode("utf-8", "replace")
+
+
+def encode_aggregate3(calls: list[tuple[str, str]], allow_failure: bool = True) -> str:
+    """Multicall3 の aggregate3((address,bool,bytes)[]) の data。calls は (宛先, data) の並び。
+    1回の eth_call で多くの読み取りをまとめるのに使う。"""
+    tuples = []
+    for target, data in calls:
+        body = data.removeprefix("0x")
+        n = len(body) // 2
+        tuples.append(f"{int(address(target), 16):064x}" + f"{int(allow_failure):064x}" + f"{96:064x}"
+                      + f"{n:064x}" + body.ljust(-(-len(body) // WORD) * WORD, "0"))
+    offsets, pos = [], 32 * len(tuples)
+    for t in tuples:
+        offsets.append(f"{pos:064x}")
+        pos += len(t) // 2
+    return (selector("aggregate3((address,bool,bytes)[])") + f"{32:064x}" + f"{len(tuples):064x}"
+            + "".join(offsets) + "".join(tuples))
+
+
+def decode_aggregate3(data: str) -> list[tuple[bool, str]]:
+    """aggregate3 の答え((bool,bytes)[])を (通ったか, 答えの data) の並びに。"""
+    raw = bytes.fromhex(data.removeprefix("0x"))
+
+    def word_at(i: int) -> int:
+        return int.from_bytes(raw[i:i + 32], "big")
+
+    arr = word_at(0)
+    n = word_at(arr)
+    base = arr + 32
+    out = []
+    for k in range(n):
+        t = base + word_at(base + 32 * k)
+        ok = bool(word_at(t))
+        b = t + word_at(t + 32)
+        length = word_at(b)
+        out.append((ok, "0x" + raw[b + 32:b + 32 + length].hex()))
+    return out
