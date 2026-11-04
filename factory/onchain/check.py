@@ -22,7 +22,7 @@ from .abi import to_int
 from .actors import LIQUIDATION_CALL, parse_liquidation
 from .cache import ChainCache
 from .chain import Chain
-from .rpc import PURPOSE_NAMES, Relay, RpcError, _short, probe, probe_logs
+from .rpc import PURPOSE_NAMES, Relay, RpcError, _short, kind_name, probe, probe_logs
 
 
 def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client | None = None,
@@ -105,6 +105,16 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
         out("ログの範囲で断られた接続先(ログを読む時だけ外した)")
         for ep in narrow:
             out(f"  {_short(ep.url)}: 断られた言い方「{ep.log_note}」→ ログは{ep.log_limit:,}ブロック以下の時だけ使う")
+    used_up = [ep for ep in relay.endpoints if ep.quota_note]
+    if used_up:
+        out(f"使える量を使い切ったと言われた接続先({relay.cooldown_quota / 60:g}分休ませた)")
+        for ep in used_up:
+            out(f"  {_short(ep.url)}: 「{ep.quota_note}」")
+    skipped = [(ep, kind) for ep in relay.endpoints for kind in ep.block_notes]
+    if skipped:
+        out(f"同じ読み方を{relay.skip_after}回続けて断った接続先(その読み方の時だけ{relay.skip_seconds / 60:g}分外した)")
+        for ep, kind in skipped:
+            out(f"  {_short(ep.url)}: {kind_name(kind)}「{ep.block_notes[kind]}」")
     out("接続先ごとに使った回数(呼んだ/失敗/断られた/キャッシュ)")
     for (endpoint, purpose), c in sorted(relay.totals.items()):
         name = endpoint if endpoint == "cache" else _short(endpoint)
