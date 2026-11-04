@@ -188,6 +188,21 @@ CREATE TABLE IF NOT EXISTS memo_uses (
     memo_id    TEXT NOT NULL,
     idea_id    TEXT
 );
+
+-- 第0期(設計書 2026-11-04): チェーンへの回線を使った回数。日本時間の日・接続先・使い道ごと
+-- (接続先 'cache' はキャッシュから返した回数)
+CREATE TABLE IF NOT EXISTS rpc_usage (
+    day          TEXT NOT NULL,
+    chain        TEXT NOT NULL,
+    endpoint     TEXT NOT NULL,
+    purpose      TEXT NOT NULL,        -- live(本番) / paper / research(調査)
+    calls        INTEGER NOT NULL DEFAULT 0,
+    errors       INTEGER NOT NULL DEFAULT 0,
+    rate_limited INTEGER NOT NULL DEFAULT 0,
+    cache_hits   INTEGER NOT NULL DEFAULT 0,
+    total_ms     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, chain, endpoint, purpose)
+);
 """
 
 # 既にあるデータベースに後から足した列(段階3)
