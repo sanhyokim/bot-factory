@@ -37,11 +37,14 @@ DEFAULT_WAITS = {"live": 2.0, "paper": 30.0, "research": 120.0}
 SEND_METHODS = frozenset({"eth_sendRawTransaction", "eth_sendTransaction", "eth_sign", "eth_signTransaction",
                           "eth_signTypedData", "eth_signTypedData_v4", "personal_sign"})
 
-_RATE = re.compile(r"rate|too many requests|requests per|throttl|capacity|credits", re.IGNORECASE)
+_RATE = re.compile(r"rate|too many requests|requests per|throttl|capacity|credits|quota|daily|monthly"
+                   r"|limit reached", re.IGNORECASE)
 _REVERT = re.compile(r"execution reverted|\breverted\b", re.IGNORECASE)
-# eth_getLogs で範囲が広すぎる・件数が多すぎると断られた時の言い方(接続先ごとに違う)
-_RANGE = re.compile(r"range|too many|more than|max(imum)? results|response size|limited to|limit exceeded"
-                    r"|block count|exceed", re.IGNORECASE)
+# eth_getLogs で範囲が広すぎる・件数が多すぎると断られた時の言い方(接続先ごとに違う)。
+# 「使いすぎ」の言い方(limit exceeded など)と取り違えないよう、範囲・件数を言うものだけにする
+_RANGE = re.compile(r"range|too many (blocks|results|logs)|more than \d+|max(imum)? results|response size"
+                    r"|limited to \d+", re.IGNORECASE)
+_NUMBER = re.compile(r"\d[\d,]*")
 
 CACHE_ENDPOINT = "cache"
 
@@ -63,7 +66,12 @@ class CallReverted(RpcError):
 
 
 class RangeTooLarge(RpcError):
-    """ログを読む範囲が広すぎると断られた(呼んだ側が範囲を狭めて読み直す)。"""
+    """ログを読む範囲が、どの接続先にも広すぎた(呼んだ側が範囲を狭めて読み直す)。
+    max_span は、いずれかの接続先が受けそうな一番広いブロック数(分からなければ None)。"""
+
+    def __init__(self, message: str, max_span: int | None = None):
+        super().__init__(message)
+        self.max_span = max_span
 
 
 class _TryNext(Exception):
@@ -80,6 +88,11 @@ class Endpoint:
     cooldown_until: float = 0.0
     recent: deque = field(default_factory=deque)     # (時刻, 使い道)。直近1分の分だけ持つ
     last_error: str = ""
+    log_limit: int | None = None     # ログを1回で読めるブロック数(断られて分かった上限。None は分かっていない)
+    log_note: str = ""               # 範囲で断られた時の言い方(画面・確かめに出す)
+
+    def fits(self, span: int | None) -> bool:
+        return span is None or self.log_limit is None or span <= self.log_limit
 
 
 class Relay:
@@ -142,9 +155,10 @@ class Relay:
         deadline = self._clock() + self.waits[purpose]
         tried: set[str] = set()
         skip: set[str] = set()       # はっきり断られた(古い状態が無い など)接続先。休ませないが、この呼び出しでは使わない
+        span = _log_span(method, params)
         attempts, max_attempts = 0, 2 * len(self.endpoints)
         while attempts < max_attempts:
-            ep, wait = self._pick(purpose, tried, skip)
+            ep, wait = self._pick(purpose, tried, skip, span)
             if ep is None:
                 if wait == math.inf:
                     break
@@ -161,9 +175,15 @@ class Relay:
                 if e.hard:
                     skip.add(ep.url)
                 continue
+        if span is not None and not any(ep.fits(span) for ep in self.endpoints):
+            limits = [ep.log_limit for ep in self.endpoints if ep.log_limit]
+            notes = " / ".join(f"{_short(ep.url)}: {ep.log_note}" for ep in self.endpoints if ep.log_note)
+            raise RangeTooLarge(f"{self.chain}: {span:,}ブロックのログはどの接続先も受けない({notes})",
+                                max(limits) if limits else None)
         raise RpcError(f"{self.chain}: {method} が{attempts}回とも失敗した。直近のエラー: {self._last_errors()}")
 
-    def _pick(self, purpose: str, tried: set[str], skip: set[str]) -> tuple[Endpoint | None, float]:
+    def _pick(self, purpose: str, tried: set[str], skip: set[str],
+              span: int | None = None) -> tuple[Endpoint | None, float]:
         """使える接続先のうち、まだ試していない・直近1分に使った回数が少ないものを選ぶ。
         使えるものが無ければ、一番早く使えるようになるまでの秒数を返す(もう使える接続先が無ければ inf)。"""
         now = self._clock()
@@ -172,7 +192,7 @@ class Relay:
         for i, ep in enumerate(self.endpoints):
             while ep.recent and now - ep.recent[0][0] >= 60:
                 ep.recent.popleft()
-            if ep.url in skip:
+            if ep.url in skip or not ep.fits(span):     # ログの範囲が、この接続先の上限より広い
                 continue
             mine = [t for t, p in ep.recent if p == purpose]
             if ep.cooldown_until > now:
@@ -212,10 +232,14 @@ class Relay:
             code = err.get("code") if isinstance(err, dict) else None
             if code == 3 or _REVERT.search(msg):
                 raise CallReverted(msg, err.get("data") if isinstance(err, dict) else None)
+            span = _log_span(method, params)
+            if span is not None and _RANGE.search(msg):
+                # この接続先の上限を覚え、この呼び出しは別の接続先に回す(休ませない)
+                ep.log_limit = min(ep.log_limit or span, _limit_from(msg, span))
+                ep.log_note = msg[:120]
+                self._fail(ep, purpose, 0, f"ログの範囲で断られた({msg[:80]})", hard=True)
             if code == 429 or _RATE.search(msg):
                 self._fail(ep, purpose, self.cooldown_rate, f"断られた({msg[:80]})", rate=True)
-            if method == "eth_getLogs" and _RANGE.search(msg):
-                raise RangeTooLarge(msg)
             if code == -32005:      # 多くの接続先で「使いすぎ」
                 self._fail(ep, purpose, self.cooldown_rate, f"断られた({msg[:80]})", rate=True)
             # その他(古いブロックの状態が無い、呼び方を知らない など)は、休ませずに次の接続先へ
@@ -267,6 +291,23 @@ class Relay:
         self.client.close()
 
 
+def _log_span(method: str, params: list) -> int | None:
+    """eth_getLogs の読むブロック数(数字で範囲が決まっている時だけ)。"""
+    if method != "eth_getLogs" or not params or not isinstance(params[0], dict):
+        return None
+    lo, hi = params[0].get("fromBlock"), params[0].get("toBlock")
+    if not (isinstance(lo, str) and isinstance(hi, str) and lo.startswith("0x") and hi.startswith("0x")):
+        return None
+    return int(hi, 16) - int(lo, 16) + 1
+
+
+def _limit_from(msg: str, span: int) -> int:
+    """断られた言い方に上限の数が書いてあれば、それを上限にする(例: 「max is 2,000」)。無ければ半分。"""
+    nums = [int(n.replace(",", "")) for n in _NUMBER.findall(msg)]
+    nums = [n for n in nums if 10 <= n < span]
+    return max(nums) if nums else max(1, span // 2)
+
+
 def _short(url: str) -> str:
     return url.split("//", 1)[-1].split("/", 1)[0]
 
@@ -302,4 +343,33 @@ def probe(client: httpx.Client, url: str) -> dict:
         out["error"] = f"つながらない({type(e).__name__})"
     except (ValueError, KeyError, TypeError, AttributeError) as e:
         out["error"] = f"答えが読めない({type(e).__name__})"
+    return out
+
+
+def probe_logs(client: httpx.Client, url: str, address: str, head: int,
+               spans: tuple[int, ...] = (10_000, 5_000, 2_000, 1_000, 500, 100)) -> dict:
+    """接続先を1つだけ直接呼び、ログを1回で何ブロックまで読めるかを広い順に試す(中継を通さない)。
+    max_ok は読めた一番広いブロック数(どれも読めなければ None)、error は最初に断られた時の言い方。"""
+    out = {"max_ok": None, "count": None, "error": ""}
+    end = head - 1_000
+    for span in spans:
+        body = {"jsonrpc": "2.0", "id": 1, "method": "eth_getLogs",
+                "params": [{"fromBlock": hex(end - span + 1), "toBlock": hex(end), "address": address}]}
+        try:
+            r = client.post(url, json=body)
+            data = r.json()
+        except httpx.TimeoutException:
+            msg = "時間切れ"
+        except httpx.HTTPError as e:
+            msg = f"つながらない({type(e).__name__})"
+        except ValueError:
+            msg = f"HTTP {r.status_code}(答えが読めない)"
+        else:
+            if isinstance(data, dict) and isinstance(data.get("result"), list):
+                out["max_ok"], out["count"] = span, len(data["result"])
+                return out
+            err = data.get("error") if isinstance(data, dict) else None
+            msg = (str(err.get("message", err)) if isinstance(err, dict) else str(err or f"HTTP {r.status_code}"))
+        if not out["error"]:
+            out["error"] = f"{span:,}ブロック: {msg[:120]}"
     return out

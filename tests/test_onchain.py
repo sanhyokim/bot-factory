@@ -169,14 +169,57 @@ def test_logs_are_chunked_and_halved_when_refused(tmp_path):
     assert chain.log_step == 2_500                    # 10,000 → 5,000 → 2,500 で通った
 
 
-def test_logs_give_up_when_even_one_block_is_refused():
+def test_logs_give_up_instead_of_shrinking_forever():
     node = FakeNode(head=100_000)
     node.max_range[A] = node.max_range[B] = node.max_range[C] = -1     # 1ブロックでも断る
-    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=8)
-    with pytest.raises(RangeTooLarge):
-        chain.logs(from_block=1, to_block=8)
-    assert chain.log_step == 1
+    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=10_000, min_log_blocks=100)
+    with pytest.raises(RangeTooLarge, match="100ブロックずつにしても読めない"):
+        chain.logs(from_block=1, to_block=50_000)
+    assert len(node.calls) < 30                     # 何万回も呼ばない
 
+
+def test_one_narrow_endpoint_does_not_shrink_the_others(tmp_path):
+    node = FakeNode(head=200_000)
+    node.logs = [liquidation_log(b) for b in (5, 15_000, 99_999)]
+    node.max_range[C] = 50                            # 1つだけ、とても狭い接続先
+    cache = ChainCache(tmp_path / "cache.db")
+    relay = make_relay(node, cache=cache)
+    chain = Chain(relay, cache_depth=100, max_log_blocks=10_000)
+    logs = chain.logs(from_block=1, to_block=100_000, address=POOL, topics=[check.LIQUIDATION_CALL])
+    assert len(logs) == 3 and chain.log_step == 10_000
+    assert relay.endpoints[2].log_limit == 50 and "exceed maximum block range" in relay.endpoints[2].log_note
+    assert relay.endpoints[2].cooldown_until == 0     # 休ませない(ほかの読み取りには使う)
+    calls = len(node.calls)
+    again = chain.logs(from_block=1, to_block=100_000, address=POOL, topics=[check.LIQUIDATION_CALL])
+    assert len(again) == 3 and len(node.calls) == calls          # 2回目は全部キャッシュから
+    cache.close()
+
+
+def test_limit_in_the_message_is_used():
+    node = FakeNode(head=100_000)
+    for u in (A, B, C):
+        node.max_range[u] = 2_000
+    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=10_000)
+    chain.logs(from_block=1, to_block=9_999)
+    assert chain.log_step == 2_000                   # 半分ずつではなく、言われた上限に一度で合わせる
+
+
+def test_quota_message_on_logs_is_rate_not_range():
+    node = FakeNode(head=100_000)
+    clock = Clock()
+    relay = make_relay(node, urls=(A, B), clock=clock)
+    orig = node.answer
+
+    def answer(url, body):
+        if url == A and body["method"] == "eth_getLogs":
+            return {"jsonrpc": "2.0", "id": body["id"], "error": {"code": -32005, "message": "daily limit exceeded"}}
+        return orig(url, body)
+
+    node.answer = answer
+    assert relay.call("eth_getLogs", [{"fromBlock": "0x1", "toBlock": "0x10"}]) == []
+    a = relay.endpoints[0]
+    assert a.log_limit is None and a.cooldown_until > clock.t
+    assert relay.totals[(A, "research")]["rate_limited"] == 1
 
 def test_only_settled_blocks_are_cached(tmp_path):
     node = FakeNode(head=10_000)
@@ -215,6 +258,8 @@ def test_chain_check_reports_endpoints_and_liquidators(conn, tmp_path, monkeypat
     text = "\n".join(lines)
     assert ok, text
     assert "使える接続先 2/3" in text and f"NG    {C}  HTTP 429" in text
+    assert "ログ: 10,000ブロックまで読めた" in text
+    assert "Aave v3 の記録(直近1,000ブロック、種類を問わず): 1件" in text
     assert "3件、清算した主体 2件" in text
     assert LIQUIDATOR in text
     assert "回線を使った回数 0回" in text
@@ -232,3 +277,14 @@ def test_chain_check_stops_when_no_endpoint_answers(tmp_path, monkeypatch):
     lines: list[str] = []
     assert not check.run("arbitrum", 1, client=node.client(), out=lines.append)
     assert "使える接続先が1つもない" in "\n".join(lines)
+
+
+def test_probe_logs_reports_the_widest_span_and_the_refusal():
+    from factory.onchain.rpc import probe_logs
+    node = FakeNode(head=100_000)
+    node.max_range[A] = 1_000
+    node.mode[B] = "http500"
+    a = probe_logs(node.client(), A, POOL, 100_000)
+    assert a["max_ok"] == 1_000 and "10,000ブロック: exceed maximum block range: 1000" in a["error"]
+    b = probe_logs(node.client(), B, POOL, 100_000)
+    assert b["max_ok"] is None and "HTTP 502" in b["error"]

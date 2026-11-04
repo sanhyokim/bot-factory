@@ -17,11 +17,12 @@ HEAD_TTL_SECONDS = 10      # 最新のブロック番号を覚えておく秒数
 
 class Chain:
     def __init__(self, relay: Relay, *, cache_depth: int = 2400, max_log_blocks: int = 10_000,
-                 clock: Callable[[], float] = time.monotonic):
+                 min_log_blocks: int = 100, clock: Callable[[], float] = time.monotonic):
         self.relay = relay
         self.name = relay.chain
         self.cache_depth = cache_depth
         self.max_log_blocks = max_log_blocks
+        self.min_log_blocks = min(min_log_blocks, max_log_blocks)
         self._clock = clock
         self._head: int | None = None
         self._head_at = 0.0
@@ -31,7 +32,7 @@ class Chain:
     def from_config(cls, name: str, **relay_kw) -> Chain:
         c = config.load_config()["onchain"]["chains"][name]
         return cls(Relay.from_config(name, **relay_kw), cache_depth=c.get("cache_depth", 2400),
-                   max_log_blocks=c.get("max_log_blocks", 10_000))
+                   max_log_blocks=c.get("max_log_blocks", 10_000), min_log_blocks=c.get("min_log_blocks", 100))
 
     # --- ブロックの番号 ---
     def head(self, purpose: str = "research") -> int:
@@ -91,13 +92,16 @@ class Chain:
     # --- ログ ---
     def logs(self, *, from_block: int, to_block: int, address: str | list[str] | None = None,
              topics: list | None = None, purpose: str = "research") -> list[dict]:
-        """ログを古い順に。範囲は log_step ずつに分けて読み、広すぎると断られたら半分にして読み直す。"""
+        """ログを古い順に。範囲は log_step の倍数の区切りで読む(同じ区切りなら2回目はキャッシュから返る)。
+        どの接続先にも広すぎると断られたら、受けてくれそうな広さ(分からなければ半分)にして読み直す。
+        min_log_blocks より狭くしないと読めない時は、あきらめて RangeTooLarge(断られ方の取り違えで、
+        何万回も呼ぶことにならないように)。"""
         if from_block > to_block:
             return []
         out: list[dict] = []
         start = from_block
         while start <= to_block:
-            end = min(to_block, start + self.log_step - 1)
+            end = min(to_block, (start // self.log_step + 1) * self.log_step - 1)
             flt: dict = {"fromBlock": hex(start), "toBlock": hex(end)}
             if address:
                 flt["address"] = address
@@ -106,10 +110,11 @@ class Chain:
             try:
                 rows = self.relay.call("eth_getLogs", [flt], purpose=purpose,
                                        cache=self._settled(end, purpose))
-            except RangeTooLarge:
-                if self.log_step == 1:
-                    raise
-                self.log_step = max(1, self.log_step // 2)
+            except RangeTooLarge as e:
+                step = e.max_span if e.max_span and e.max_span < self.log_step else self.log_step // 2
+                if step < self.min_log_blocks:
+                    raise RangeTooLarge(f"ログを{self.min_log_blocks:,}ブロックずつにしても読めない: {e}") from e
+                self.log_step = step
                 continue
             out.extend(rows or [])
             start = end + 1
