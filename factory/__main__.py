@@ -75,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
     ac.add_argument("--days", type=float, default=7, help="さかのぼる日数")
     ac.add_argument("--top", type=int, default=15, help="表に出す主体の数")
 
+    aw = sub.add_parser("aave-watch", help="清算できる借り手を探し、実際に誰が取ったかを記録する(読み取りだけ。第0期)")
+    aw.add_argument("--chain", default="arbitrum")
+    aw.add_argument("--every", type=float, default=0, help="この秒数ごとにくり返す(0なら1回だけ。止める時は Ctrl+C)")
+
     sub.add_parser("dashboard", help="画面を http://localhost:8800 で開く")
     sub.add_parser("feed", help="価格の受け取り口: 動いているBOTの銘柄の価格を決まった間隔で取り込む(見張り役が起こす)")
     sub.add_parser("watchdog", help="見張り役: 画面と価格の受け取り口を起こし、落ちたら再起動する")
@@ -126,6 +130,9 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             cache.close()
             conn.close()
+    if args.cmd == "aave-watch":
+        from .onchain import scan_command
+        return scan_command.run_watch(args.chain, every=args.every)
     if args.cmd == "actor-scan":
         from .onchain import scan_command
         return scan_command.run(args.chain, args.days, args.top)

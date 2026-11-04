@@ -131,6 +131,10 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
     wait_seconds: {live: 2, paper: 30, research: 120}    # どの接続先も使えない時に待つ長さ
     cooldown_rate_seconds: 60    # 断られた(429)接続先を休ませる秒数
     cooldown_error_seconds: 30   # つながらない・壊れた答えの接続先を休ませる秒数
+  watch:                    # 機会の見張り(Aave の清算)
+    borrower_days: 90       # 借りた記録をさかのぼる日数(これより前に借りて、その後借りていない借り手は見えない)
+    multicall_batch: 100    # 健康度を1回でまとめて読む人数
+    min_debt_usd: 10        # 借金がこれ未満の口座は、清算してもガス代に負けるので機会にしない
   chains:
     arbitrum:
       chain_id: 42161
@@ -147,3 +151,4 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
       protocols:
         aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"   # 貸し借りの仕組み(清算の記録を出す)
         weth: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"           # ガス代をドルにする時の ETH の値段に使う
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"     # 多くの読み取りを1回にまとめる仕組み(どのチェーンも同じ住所)

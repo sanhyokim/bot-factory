@@ -1,7 +1,8 @@
 """回線の確かめ(python -m factory chain-check)。ボスのPCで動かして、無料の接続先が使えるかを見る。
 
-1. 接続先を1つずつ直接呼び、チェーンの番号・最新のブロック・かかった時間を見る
-2. 中継を通して、確定したブロックまでの直近の清算の記録(Aave v3)を読む。範囲が広すぎると断られたら半分にする
+1. 接続先を1つずつ直接呼び、チェーンの番号・最新のブロック・かかった時間と、ログを1回で何ブロックまで読めるかを見る
+2. 中継を通して、Aave v3 の直近の記録(種類を問わず)と、確定したブロックまでの清算の記録を読む。
+   範囲が広すぎると断られた接続先は、ログを読む時だけ外す
 3. 同じ範囲をもう一度読み、キャッシュから返る(回線を使わない)ことを見る
 
 読み取りだけ。鍵もお金も使わない。
@@ -21,7 +22,7 @@ from .abi import to_int
 from .actors import LIQUIDATION_CALL, parse_liquidation
 from .cache import ChainCache
 from .chain import Chain
-from .rpc import PURPOSE_NAMES, Relay, RpcError, _short, probe
+from .rpc import PURPOSE_NAMES, Relay, RpcError, _short, probe, probe_logs
 
 
 def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client | None = None,
@@ -35,6 +36,7 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
     out(f"チェーン: {chain_name}(chain_id {cfg['chain_id']})")
     out("1. 接続先を1つずつ確かめる")
     alive = 0
+    pool = cfg.get("protocols", {}).get("aave_v3_pool")
     for url in cfg["endpoints"]:
         p = probe(client, url)
         if p["ok"] and p["chain_id"] != cfg["chain_id"]:
@@ -42,6 +44,14 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
         elif p["ok"]:
             alive += 1
             out(f"  OK    {url}  ブロック {p['block']:,}  {p['ms']}ミリ秒")
+            if pool:
+                lg = probe_logs(client, url, pool, p["block"])
+                if lg["max_ok"] is None:
+                    out(f"          ログ: 読めない({lg['error']})")
+                elif lg["error"]:
+                    out(f"          ログ: {lg['max_ok']:,}ブロックまで読めた(断られた言い方 {lg['error']})")
+                else:
+                    out(f"          ログ: {lg['max_ok']:,}ブロックまで読めた(Aave の記録 {lg['count']}件)")
         else:
             out(f"  NG    {url}  {p['error']}")
     out(f"  → 使える接続先 {alive}/{len(cfg['endpoints'])}")
@@ -50,8 +60,8 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
         return False
 
     relay = Relay.from_config(chain_name, client=client, cache=cache, usage_conn=usage_conn)
-    chain = Chain(relay, cache_depth=cfg.get("cache_depth", 2400), max_log_blocks=cfg.get("max_log_blocks", 10_000))
-    pool = cfg.get("protocols", {}).get("aave_v3_pool")
+    chain = Chain(relay, cache_depth=cfg.get("cache_depth", 2400), max_log_blocks=cfg.get("max_log_blocks", 10_000),
+                  min_log_blocks=cfg.get("min_log_blocks", 100))
     try:
         out("2. 中継を通して読む")
         head = chain.head()
@@ -66,6 +76,10 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
                 out(f"  エラー: Aave v3 の仕組み {pool} がこのチェーンに無い(設定の住所を確かめる)")
                 ok = False
             else:
+                recent = chain.logs(from_block=safe - 999, to_block=safe, address=pool)
+                out(f"  Aave v3 の記録(直近1,000ブロック、種類を問わず): {len(recent)}件"
+                    + ("" if recent else "。0件はおかしい(ログが読めていない見込み)"))
+                ok = ok and bool(recent)
                 logs = chain.logs(from_block=start, to_block=safe, address=pool, topics=[LIQUIDATION_CALL])
                 who = Counter(parse_liquidation(lg).liquidator for lg in logs)
                 out(f"  Aave v3 の清算の記録(直近{hours:g}時間、ブロック {start:,}〜{safe:,}): {len(logs)}件、"
@@ -86,6 +100,11 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
     finally:
         relay.flush()
 
+    narrow = [ep for ep in relay.endpoints if ep.log_limit]
+    if narrow:
+        out("ログの範囲で断られた接続先(ログを読む時だけ外した)")
+        for ep in narrow:
+            out(f"  {_short(ep.url)}: 断られた言い方「{ep.log_note}」→ ログは{ep.log_limit:,}ブロック以下の時だけ使う")
     out("接続先ごとに使った回数(呼んだ/失敗/断られた/キャッシュ)")
     for (endpoint, purpose), c in sorted(relay.totals.items()):
         name = endpoint if endpoint == "cache" else _short(endpoint)

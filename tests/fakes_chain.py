@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-from factory.onchain.abi import address, selector
+from factory.onchain.abi import address, selector, topic
 from factory.onchain.actors import LIQUIDATION_CALL
 
 A = "https://a.example/rpc"
@@ -18,8 +18,11 @@ WETH = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
 USDC = "0x" + "05" * 20
 WBTC = "0x" + "0b" * 20
 
+MULTICALL = "0xca11bde05977b3631167028862be2a173976ca11"
+BORROW = topic("Borrow(address,address,address,uint256,uint8,uint256,uint16)")
 SEL = {name: selector(name) for name in ("ADDRESSES_PROVIDER()", "getPriceOracle()", "BASE_CURRENCY_UNIT()",
-                                         "getAssetPrice(address)", "decimals()", "symbol()")}
+                                         "getAssetPrice(address)", "decimals()", "symbol()",
+                                         "aggregate3((address,bool,bytes)[])", "getUserAccountData(address)")}
 
 
 def word(n: int) -> str:
@@ -29,6 +32,33 @@ def word(n: int) -> str:
 def string_answer(s: str) -> str:
     raw = s.encode().hex()
     return "0x" + word(32) + word(len(s)) + raw.ljust(64 * max(1, -(-len(raw) // 64)), "0")
+
+
+def split_aggregate3(data: str) -> list[tuple[str, str]]:
+    """aggregate3 の data を (宛先, data) の並びに戻す(偽の接続先が読むため)。"""
+    raw = bytes.fromhex(data[10:])
+    w = lambda i: int.from_bytes(raw[i:i + 32], "big")
+    arr = w(0)
+    n, base = w(arr), arr + 32
+    out = []
+    for k in range(n):
+        t = base + w(base + 32 * k)
+        b = t + w(t + 64)
+        out.append(("0x" + raw[t + 12:t + 32].hex(), "0x" + raw[b + 32:b + 32 + w(b)].hex()))
+    return out
+
+
+def join_results(results: list[tuple[bool, str]]) -> str:
+    """(通ったか, data) の並びを aggregate3 の答えの形にする。"""
+    parts = []
+    for ok, data in results:
+        body = data[2:]
+        parts.append(word(int(ok)) + word(64) + word(len(body) // 2) + body.ljust(-(-len(body) // 64) * 64, "0"))
+    offsets, pos = [], 32 * len(parts)
+    for part in parts:
+        offsets.append(word(pos))
+        pos += len(part) // 2
+    return "0x" + word(32) + word(len(parts)) + "".join(offsets) + "".join(parts)
 
 
 class Clock:
@@ -59,6 +89,7 @@ class FakeNode:
         self.tokens = {WETH: ("WETH", 18), USDC: ("USDC", 6), WBTC: ("WBTC", 8)}
         self.txs: dict[str, dict] = {}
         self.receipts: dict[str, dict] = {}
+        self.accounts: dict[str, tuple] = {}   # 借り手 → (担保ドル, 借金ドル, 清算の線, 健康度)
 
     def client(self):
         return httpx.Client(transport=httpx.MockTransport(self.handle))
@@ -134,24 +165,46 @@ class FakeNode:
                 return ok("0x" + word(self.tokens[to][1]))
             if sel == SEL["symbol()"] and to in self.tokens:
                 return ok(string_answer(self.tokens[to][0]))
+            if sel == SEL["aggregate3((address,bool,bytes)[])"] and to == MULTICALL:
+                return ok(join_results([self.account_answer(t, d) for t, d in split_aggregate3(data)]))
             return ok("0x" + word(7))
         if m == "eth_getLogs":
             lo, hi = int(p[0]["fromBlock"], 16), int(p[0]["toBlock"], 16)
             limit = self.max_range.get(url)
             if limit and hi - lo + 1 > limit:
                 return err(-32602, f"exceed maximum block range: {limit}")
-            return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi])
+            t0 = (p[0].get("topics") or [None])[0]
+            want = (p[0].get("address") or "").lower()
+            return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi
+                       and (t0 is None or lg["topics"][0] == t0) and (not want or lg["address"].lower() == want)])
         return err(-32601, "method not found")
+
+    def account_answer(self, target: str, data: str) -> tuple[bool, str]:
+        if target != POOL.lower() or data[:10] != SEL["getUserAccountData(address)"]:
+            return False, "0x"
+        user = address(data[10:])
+        coll, debt, lt, hf = self.accounts.get(user, (0.0, 0.0, 0.0, None))
+        hf_raw = 2**256 - 1 if hf is None else int(hf * 10**18)
+        return True, "0x" + "".join(word(v) for v in (int(coll * 1e8), int(debt * 1e8), 0, int(lt * 1e4), 0, hf_raw))
+
+    def add_borrow(self, block: int, user: str) -> None:
+        self.logs.append({"address": POOL.lower(), "blockNumber": hex(block), "transactionHash": "0x" + f"{block:064x}",
+                          "logIndex": "0x0",
+                          "topics": [BORROW, "0x" + USDC[2:].rjust(64, "0"), "0x" + user[2:].rjust(64, "0"),
+                                     "0x" + word(0)],
+                          "data": "0x" + word(int(user, 16)) + word(10**6) + word(2) + word(5)})
 
     def add_liquidation(self, block: int, *, tx_hash: str | None = None, log_index: int = 3,
                         liquidator: str = LIQUIDATOR, sender: str = "0x" + "e0" * 20, to: str | None = None,
                         collateral: str = WETH, debt: str = USDC, debt_amount: int = 1_000 * 10**6,
                         collateral_amount: int = 35 * 10**16, gas_used: int = 1_000_000,
-                        gas_price_wei: int = 10**7, extra_logs: list | None = None) -> str:
+                        gas_price_wei: int = 10**7, extra_logs: list | None = None,
+                        borrower: str = "0x" + "bb" * 20) -> str:
         """清算を1件足す(取引・受領書つき)。既定は 1,000 USDC を返して 0.35 WETH(1,050ドル)を受け取る。"""
         tx_hash = tx_hash or "0x" + f"{block:064x}"
         log = liquidation_log(block, liquidator, collateral=collateral, debt=debt, debt_amount=debt_amount,
-                              collateral_amount=collateral_amount, tx_hash=tx_hash, log_index=log_index)
+                              collateral_amount=collateral_amount, tx_hash=tx_hash, log_index=log_index,
+                              borrower=borrower)
         self.logs.append(log)
         self.txs[tx_hash] = {"hash": tx_hash, "from": sender, "to": to or liquidator, "blockNumber": hex(block),
                              "transactionIndex": "0x1", "gasPrice": hex(gas_price_wei)}
@@ -164,10 +217,10 @@ class FakeNode:
 
 def liquidation_log(block: int, liquidator: str = LIQUIDATOR, *, collateral: str = WETH, debt: str = USDC,
                     debt_amount: int = 10**6, collateral_amount: int = 2 * 10**6, tx_hash: str | None = None,
-                    log_index: int = 0) -> dict:
+                    log_index: int = 0, borrower: str = "0x" + "bb" * 20) -> dict:
     data = "0x" + word(debt_amount) + word(collateral_amount) + liquidator[2:].rjust(64, "0") + word(0)
     return {"address": POOL.lower(), "blockNumber": hex(block), "transactionHash": tx_hash or "0x" + f"{block:064x}",
             "logIndex": hex(log_index),
             "topics": [LIQUIDATION_CALL, "0x" + collateral[2:].rjust(64, "0"), "0x" + debt[2:].rjust(64, "0"),
-                       "0x" + "00" * 12 + "bb" * 20],
+                       "0x" + borrower[2:].rjust(64, "0")],
             "data": data}
