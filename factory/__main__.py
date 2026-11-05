@@ -87,6 +87,12 @@ def main(argv: list[str] | None = None) -> int:
     lt.add_argument("--days", type=float, default=7, help="さかのぼる日数(actor-scan で読んだ清算のうち)")
     lt.add_argument("--top", type=int, default=10, help="表に出す主体・清算の数")
 
+    cs = sub.add_parser("compound-scan", help="清算の地図に載った Compound の写し(Lodestar・dForce など)の清算を"
+                                              "1件ずつ読み、利益・取られるまでの速さ・理由を出す(読み取りだけ。第0期)")
+    cs.add_argument("--chain", default="arbitrum")
+    cs.add_argument("--days", type=float, default=7, help="さかのぼる日数(venue-scan で読んだ清算のうち)")
+    cs.add_argument("--top", type=int, default=5, help="仕組みごとに出す、遅く取られた清算の数")
+
     aw = sub.add_parser("aave-watch", help="清算できる借り手を探し、実際に誰が取ったかを記録する(読み取りだけ。第0期)")
     aw.add_argument("--chain", default="arbitrum")
     aw.add_argument("--every", type=float, default=0, help="この秒数ごとにくり返す(0なら1回だけ。止める時は Ctrl+C)")
@@ -148,6 +154,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "venue-scan":
         from .onchain import scan_command
         return scan_command.run_venues(args.chain, args.days, args.top)
+    if args.cmd == "compound-scan":
+        from .onchain import scan_command
+        return scan_command.run_compound(args.chain, args.days, args.top)
     if args.cmd == "liq-timing":
         from .onchain import scan_command
         return scan_command.run_timing(args.chain, args.days, args.top)
