@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS chain_liquidations (
     flash         TEXT NOT NULL DEFAULT '',  -- 使ったフラッシュローン(例: Aave,Balancer)
     swaps         INTEGER NOT NULL DEFAULT 0,
     pattern       TEXT NOT NULL DEFAULT '',
+    timeboosted   INTEGER,                   -- 優先レーン(Timeboost)で入った取引か: 1 / 0 / -1(受領書に印が無い)
     PRIMARY KEY (chain, tx_hash, log_index)
 );
 CREATE INDEX IF NOT EXISTS chain_liquidations_actor ON chain_liquidations(chain, liquidator, ts);
@@ -91,6 +92,19 @@ WINDOW_BLOCKS = 50_000      # この幅ごとに読み終えた所を残す(途�
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    have = {r[1] for r in conn.execute("PRAGMA table_info(chain_liquidations)")}
+    if "timeboosted" not in have:          # 2026-11-05 に足した列
+        conn.execute("ALTER TABLE chain_liquidations ADD COLUMN timeboosted INTEGER")
+        conn.commit()
+
+
+def timeboosted(receipt: dict) -> int:
+    """Arbitrum の優先レーン(1分ごとの入札で勝った人が0.2秒早く入れられる有料の枠)で入った取引か。
+    受領書の timeboosted の印を読む。印が無ければ -1(接続先か時期によっては返さない)。"""
+    v = (receipt or {}).get("timeboosted")
+    if v is None:
+        return -1
+    return 1 if v in (True, "0x1", "true", 1) else 0
 
 
 @dataclass
@@ -251,16 +265,29 @@ class Scanner:
                 """INSERT OR IGNORE INTO chain_liquidations(chain, tx_hash, log_index, protocol, block, ts, tx_index,
                        liquidator, sender, tx_to, borrower, collateral, debt, collateral_amount, debt_amount,
                        collateral_usd, debt_usd, gas_usd, gross_usd, net_usd, gas_price_gwei, price_basis,
-                       via, flash, swaps, pattern)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       via, flash, swaps, pattern, timeboosted)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (self.chain.name, e.tx_hash, e.log_index, PROTOCOL, e.block, to_int(blk.get("timestamp", "0x0")),
                  to_int(tx["transactionIndex"]) if tx.get("transactionIndex") else None,
                  e.liquidator, address(tx["from"]) if tx.get("from") else None,
                  address(tx["to"]) if tx.get("to") else None, e.borrower, e.collateral, e.debt,
                  str(e.collateral_amount), str(e.debt_amount), c_usd, d_usd, gas_usd, gross, net, gwei, basis,
-                 shape["via"], shape["flash"], shape["swaps"], f"{c_sym}担保/{d_sym}借金・" + shape["pattern"]))
+                 shape["via"], shape["flash"], shape["swaps"], f"{c_sym}担保/{d_sym}借金・" + shape["pattern"],
+                 timeboosted(rc)))
             self.conn.commit()
         return len(new)
+
+
+def backfill_timeboost(conn: sqlite3.Connection, chain: Chain, since_ts: int, purpose: str = "research") -> int:
+    """優先レーンの印を足す前に帳簿に入った清算に、受領書から印を書く(受領書はキャッシュから返る)。"""
+    rows = conn.execute("""SELECT DISTINCT tx_hash FROM chain_liquidations
+                           WHERE chain = ? AND ts >= ? AND timeboosted IS NULL""", (chain.name, since_ts)).fetchall()
+    for (tx_hash,) in rows:
+        rc = chain.receipt(tx_hash, purpose=purpose) or {}
+        conn.execute("UPDATE chain_liquidations SET timeboosted = ? WHERE chain = ? AND tx_hash = ?",
+                     (timeboosted(rc), chain.name, tx_hash))
+    conn.commit()
+    return len(rows)
 
 
 def plan(conn: sqlite3.Connection, chain: str, start: int, end: int, key: str = PROTOCOL) -> list[tuple[int, int]]:
@@ -318,6 +345,8 @@ def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> list[dict]
             "median_gwei": statistics.median(r["gas_price_gwei"] for r in rs),
             "via": Counter(r["via"] for r in rs).most_common(1)[0][0],
             "shape": shapes.most_common(1)[0][0], "first_ts": rs[0]["ts"], "last_ts": rs[-1]["ts"],
+            "boosted": sum(1 for r in rs if r["timeboosted"] == 1),
+            "boost_known": sum(1 for r in rs if r["timeboosted"] in (0, 1)),
         })
     out.sort(key=lambda a: a["net_usd"], reverse=True)
     return out
@@ -331,12 +360,14 @@ def describe(summary: list[dict], *, chain: str, days: float, top: int = 15, bas
              + ("" if basis == "block" else "(値段は今の値段で計算。古いブロックの状態を読める接続先が無かった)")]
     if not summary:
         return lines
-    lines.append("  順位 清算した仕組み  回数 財布数 純利益(粗利−ガス代) 1件の最大 ガス価格の中央値 主な型")
+    lines.append("  順位 清算した仕組み  回数 財布数 純利益(粗利−ガス代) 1件の最大 ガス価格の中央値 主な型 "
+                 "優先レーンで入った件数")
     for i, a in enumerate(summary[:top], 1):
         share = a["net_usd"] / net * 100 if net > 0 else 0
         lines.append(f"  {i:>2}. {a['liquidator']}  {a['count']}回 {a['senders']}財布 "
                      f"${a['net_usd']:,.2f}(${a['gross_usd']:,.2f}−${a['gas_usd']:,.2f}、全体の{share:.0f}%) "
-                     f"${a['best_usd']:,.2f} {a['median_gwei']:.3g}gwei {a['shape']}"
+                     f"${a['best_usd']:,.2f} {a['median_gwei']:.3g}gwei {a['shape']} "
+                     + (f"優先レーン {a['boosted']}/{a['boost_known']}件" if a["boost_known"] else "優先レーン 不明")
                      + (f" 値段なし{a['unpriced']}件" if a["unpriced"] else ""))
     if len(summary) > top:
         lines.append(f"  ほか{len(summary) - top}件")

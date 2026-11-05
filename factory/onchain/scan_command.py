@@ -37,7 +37,9 @@ def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: 
         scanner = actors.Scanner.from_config(conn, chain, out=say)
         added = sum(scanner.scan(a, b) for a, b in ranges)
         say(f"  新しく帳簿に足した清算 {added}件")
-        summary = actors.summarize(conn, chain_name, int(time.time() - days * 86400))
+        since = int(time.time() - days * 86400)
+        actors.backfill_timeboost(conn, chain, since)
+        summary = actors.summarize(conn, chain_name, since)
         for line in actors.describe(summary, chain=chain_name, days=days, top=top,
                                     basis="block" if scanner.archive_ok else "latest"):
             say(line)
