@@ -75,6 +75,12 @@ def main(argv: list[str] | None = None) -> int:
     ac.add_argument("--days", type=float, default=7, help="さかのぼる日数")
     ac.add_argument("--top", type=int, default=15, help="表に出す主体の数")
 
+    vs = sub.add_parser("venue-scan", help="チェーンの上で清算をしている仕組みを、Aave 以外もすべて探して表にする"
+                                           "(清算の地図。読み取りだけ。第0期)")
+    vs.add_argument("--chain", default="arbitrum")
+    vs.add_argument("--days", type=float, default=7, help="さかのぼる日数")
+    vs.add_argument("--top", type=int, default=25, help="表に出す仕組みの数")
+
     lt = sub.add_parser("liq-timing", help="過去の清算ごとに、清算できるようになってから何秒で取られたかと、"
                                            "その理由(値段か利息か)を測る(読み取りだけ。第0期)")
     lt.add_argument("--chain", default="arbitrum")
@@ -139,6 +145,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "aave-watch":
         from .onchain import scan_command
         return scan_command.run_watch(args.chain, every=args.every)
+    if args.cmd == "venue-scan":
+        from .onchain import scan_command
+        return scan_command.run_venues(args.chain, args.days, args.top)
     if args.cmd == "liq-timing":
         from .onchain import scan_command
         return scan_command.run_timing(args.chain, args.days, args.top)

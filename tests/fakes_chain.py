@@ -22,7 +22,8 @@ MULTICALL = "0xca11bde05977b3631167028862be2a173976ca11"
 BORROW = topic("Borrow(address,address,address,uint256,uint8,uint256,uint16)")
 SEL = {name: selector(name) for name in ("ADDRESSES_PROVIDER()", "getPriceOracle()", "BASE_CURRENCY_UNIT()",
                                          "getAssetPrice(address)", "decimals()", "symbol()",
-                                         "aggregate3((address,bool,bytes)[])", "getUserAccountData(address)")}
+                                         "aggregate3((address,bool,bytes)[])", "getUserAccountData(address)",
+                                         "comptroller()")}
 
 
 def word(n: int) -> str:
@@ -92,6 +93,7 @@ class FakeNode:
         self.accounts: dict[str, tuple] = {}   # 借り手 → (担保ドル, 借金ドル, 清算の線, 健康度)
         self.history: dict[str, object] = {}   # 借り手 → ブロックを受けて (担保ドル, 借金ドル, 清算の線, 健康度) を返す関数
         self.price_changes: list[tuple[int, str, float]] = []   # (このブロックから, トークン, ドル)
+        self.comptrollers: dict[str, str] = {}   # Compound の写しの市場 → まとめる仕組み(Comptroller)
 
     def client(self):
         return httpx.Client(transport=httpx.MockTransport(self.handle))
@@ -167,10 +169,14 @@ class FakeNode:
                 if px is None:
                     return err(3, "execution reverted")
                 return ok("0x" + word(int(px * 10**8)))
+            if sel == SEL["comptroller()"]:
+                return ok("0x" + word(int(self.comptrollers[to], 16))) if to in self.comptrollers else err(3, "execution reverted")
             if sel == SEL["decimals()"] and to in self.tokens:
                 return ok("0x" + word(self.tokens[to][1]))
             if sel == SEL["symbol()"] and to in self.tokens:
                 return ok(string_answer(self.tokens[to][0]))
+            if sel == SEL["symbol()"]:
+                return err(3, "execution reverted")
             at = self.head if tag == "latest" else int(tag, 16)
             if sel == SEL["aggregate3((address,bool,bytes)[])"] and to == MULTICALL:
                 return ok(join_results([self.account_answer(t, d, at) for t, d in split_aggregate3(data)]))
@@ -185,9 +191,10 @@ class FakeNode:
             if limit and hi - lo + 1 > limit:
                 return err(-32602, f"exceed maximum block range: {limit}")
             t0 = (p[0].get("topics") or [None])[0]
+            t0 = None if t0 is None else set(t0) if isinstance(t0, list) else {t0}    # 並べたら「どれか」
             want = (p[0].get("address") or "").lower()
             return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi
-                       and (t0 is None or lg["topics"][0] == t0) and (not want or lg["address"].lower() == want)])
+                       and (t0 is None or lg["topics"][0] in t0) and (not want or lg["address"].lower() == want)])
         return err(-32601, "method not found")
 
     def account_answer(self, target: str, data: str, block: int | None = None) -> tuple[bool, str]:
