@@ -37,7 +37,9 @@ def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: 
         scanner = actors.Scanner.from_config(conn, chain, out=say)
         added = sum(scanner.scan(a, b) for a, b in ranges)
         say(f"  新しく帳簿に足した清算 {added}件")
-        summary = actors.summarize(conn, chain_name, int(time.time() - days * 86400))
+        since = int(time.time() - days * 86400)
+        actors.backfill_timeboost(conn, chain, since)
+        summary = actors.summarize(conn, chain_name, since)
         for line in actors.describe(summary, chain=chain_name, days=days, top=top,
                                     basis="block" if scanner.archive_ok else "latest"):
             say(line)
@@ -153,6 +155,50 @@ def run_timing(chain_name: str = "arbitrum", days: float = 7, top: int = 10, *, 
     except RpcError as e:
         say(f"エラー: {e}(測り終えた分は残っている。もう一度動かすと続きから測る。"
             "古いブロックの状態を読める接続先が要る)")
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()
+
+
+def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, chain: Chain | None = None,
+               conn=None, out: Callable[[str], None] | None = None) -> int:
+    """python -m factory venue-scan: 清算の記録を出している仕組みを、住所を決めずにすべて探す(清算の地図)。"""
+    from . import venues
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    try:
+        block_seconds = config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25)
+        safe = chain.safe_head()
+        start = max(0, safe - int(days * 86400 / block_seconds) + 1)
+        ranges = actors.plan(conn, chain_name, start, safe, key=venues.SCAN_KEY)
+        todo = sum(b - a + 1 for a, b in ranges)
+        say(f"清算の記録を、仕組みを決めずに読む: ブロック {start:,}〜{safe:,}(まだ読んでいない {todo:,}ブロック。"
+            f"記録の形 {len(venues.FAMILIES)}種類)")
+        mapper = venues.Mapper(conn, chain, out=say)
+        added = sum(mapper.scan(a, b) for a, b in ranges)
+        say(f"  新しく帳簿に足した記録 {added}件")
+        for line in venues.describe(venues.summarize(conn, chain_name, int(time.time() - days * 86400)),
+                                    chain=chain_name, days=days, top=top):
+            say(line)
+        return 0
+    except RpcError as e:
+        say(f"エラー: {e}(読み終えた所までは残っている。もう一度動かすと続きから読む)")
         print(f"エラー: {e}", file=sys.stderr)
         return 1
     finally:

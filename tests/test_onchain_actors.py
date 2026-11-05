@@ -137,3 +137,36 @@ def test_actor_scan_command_reports_rpc_errors(conn):
     chain.relay.waits["research"] = 0
     assert scan_command.run("arbitrum", 1, chain=chain, conn=conn, out=lines.append) == 1
     assert "エラー" in lines[-1]
+
+
+def test_timeboost_mark_is_recorded_and_shown_per_actor(conn):
+    node = FakeNode(head=400_000)
+    boosted = node.add_liquidation(399_000)
+    node.add_liquidation(399_100, liquidator=OTHER)
+    node.receipts[boosted]["timeboosted"] = True          # 優先レーンで入った取引
+    lines = []
+    assert scan_command.run("arbitrum", 1, chain=make_chain(node), conn=conn, out=lines.append) == 0
+    text = "\n".join(lines)
+    assert "優先レーン 1/1件" in text                      # 印があった
+    assert "優先レーン 不明" in text                       # 印が無い受領書(接続先が返さない)
+    marks = {r[0]: r[1] for r in conn.execute("SELECT liquidator, timeboosted FROM chain_liquidations")}
+    assert marks == {LIQUIDATOR: 1, OTHER: -1}
+
+
+def test_old_rows_get_the_timeboost_mark_from_receipts(conn, tmp_path):
+    import sqlite3
+
+    old = sqlite3.connect(tmp_path / "old.db")
+    old.row_factory = sqlite3.Row
+    old.executescript(actors.SCHEMA.replace("    timeboosted   INTEGER,                   -- 優先レーン"
+                                            "(Timeboost)で入った取引か: 1 / 0 / -1(受領書に印が無い)\n", ""))
+    assert "timeboosted" not in {r[1] for r in old.execute("PRAGMA table_info(chain_liquidations)")}
+    actors.ensure_schema(old)                               # 前の版の帳簿に列を足す
+    node = FakeNode(head=400_000)
+    tx = node.add_liquidation(399_000)
+    node.receipts[tx]["timeboosted"] = "0x0"
+    actors.Scanner(old, make_chain(node), pool=POOL, weth=WETH, out=lambda s: None).scan(398_000, 399_500)
+    old.execute("UPDATE chain_liquidations SET timeboosted = NULL")
+    assert actors.backfill_timeboost(old, make_chain(node), 0) == 1
+    assert old.execute("SELECT timeboosted FROM chain_liquidations").fetchone()[0] == 0
+    old.close()
