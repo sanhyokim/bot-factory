@@ -124,3 +124,42 @@ def run_watch(chain_name: str = "arbitrum", *, every: float = 0, rounds: int | N
             cache.close()
         if own:
             conn.close()
+
+
+def run_timing(chain_name: str = "arbitrum", days: float = 7, top: int = 10, *, chain: Chain | None = None,
+               conn=None, out: Callable[[str], None] | None = None) -> int:
+    """python -m factory liq-timing: 過去の清算ごとに、割れてから取られるまでの速さと理由を測る。"""
+    from . import timing
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    since = int(time.time() - days * 86400)
+    try:
+        timer = timing.Timer.from_config(conn, chain, out=say)
+        st = timer.run(since)
+        say(f"清算の速さを測る: まだ測っていない {st['todo']}件のうち {st['done']}件を測った"
+            f"(読み取り {st['reads']:,}回{'、読めなかった ' + str(st['failed']) + '件' if st['failed'] else ''})")
+        for line in timing.describe(timing.summarize(conn, chain_name, since), chain=chain_name, days=days, top=top):
+            say(line)
+        return 0
+    except RpcError as e:
+        say(f"エラー: {e}(測り終えた分は残っている。もう一度動かすと続きから測る。"
+            "古いブロックの状態を読める接続先が要る)")
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()

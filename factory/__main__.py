@@ -75,6 +75,12 @@ def main(argv: list[str] | None = None) -> int:
     ac.add_argument("--days", type=float, default=7, help="さかのぼる日数")
     ac.add_argument("--top", type=int, default=15, help="表に出す主体の数")
 
+    lt = sub.add_parser("liq-timing", help="過去の清算ごとに、清算できるようになってから何秒で取られたかと、"
+                                           "その理由(値段か利息か)を測る(読み取りだけ。第0期)")
+    lt.add_argument("--chain", default="arbitrum")
+    lt.add_argument("--days", type=float, default=7, help="さかのぼる日数(actor-scan で読んだ清算のうち)")
+    lt.add_argument("--top", type=int, default=10, help="表に出す主体・清算の数")
+
     aw = sub.add_parser("aave-watch", help="清算できる借り手を探し、実際に誰が取ったかを記録する(読み取りだけ。第0期)")
     aw.add_argument("--chain", default="arbitrum")
     aw.add_argument("--every", type=float, default=0, help="この秒数ごとにくり返す(0なら1回だけ。止める時は Ctrl+C)")
@@ -133,6 +139,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "aave-watch":
         from .onchain import scan_command
         return scan_command.run_watch(args.chain, every=args.every)
+    if args.cmd == "liq-timing":
+        from .onchain import scan_command
+        return scan_command.run_timing(args.chain, args.days, args.top)
     if args.cmd == "actor-scan":
         from .onchain import scan_command
         return scan_command.run(args.chain, args.days, args.top)
