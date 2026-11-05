@@ -90,6 +90,8 @@ class FakeNode:
         self.txs: dict[str, dict] = {}
         self.receipts: dict[str, dict] = {}
         self.accounts: dict[str, tuple] = {}   # 借り手 → (担保ドル, 借金ドル, 清算の線, 健康度)
+        self.history: dict[str, object] = {}   # 借り手 → ブロックを受けて (担保ドル, 借金ドル, 清算の線, 健康度) を返す関数
+        self.price_changes: list[tuple[int, str, float]] = []   # (このブロックから, トークン, ドル)
 
     def client(self):
         return httpx.Client(transport=httpx.MockTransport(self.handle))
@@ -158,6 +160,10 @@ class FakeNode:
                 if tag != "latest" and not self.archive:
                     return err(-32000, "missing trie node abc (path )")
                 px = (self.latest_prices if tag == "latest" else {}).get(asset, self.prices.get(asset))
+                at = self.head if tag == "latest" else int(tag, 16)
+                for start, token, value in sorted(self.price_changes):
+                    if token == asset and start <= at:
+                        px = value
                 if px is None:
                     return err(3, "execution reverted")
                 return ok("0x" + word(int(px * 10**8)))
@@ -165,8 +171,13 @@ class FakeNode:
                 return ok("0x" + word(self.tokens[to][1]))
             if sel == SEL["symbol()"] and to in self.tokens:
                 return ok(string_answer(self.tokens[to][0]))
+            at = self.head if tag == "latest" else int(tag, 16)
             if sel == SEL["aggregate3((address,bool,bytes)[])"] and to == MULTICALL:
-                return ok(join_results([self.account_answer(t, d) for t, d in split_aggregate3(data)]))
+                return ok(join_results([self.account_answer(t, d, at) for t, d in split_aggregate3(data)]))
+            if sel == SEL["getUserAccountData(address)"] and to == POOL.lower():
+                if tag != "latest" and not self.archive:
+                    return err(-32000, "missing trie node abc (path )")
+                return ok(self.account_answer(to, data, at)[1])
             return ok("0x" + word(7))
         if m == "eth_getLogs":
             lo, hi = int(p[0]["fromBlock"], 16), int(p[0]["toBlock"], 16)
@@ -179,11 +190,14 @@ class FakeNode:
                        and (t0 is None or lg["topics"][0] == t0) and (not want or lg["address"].lower() == want)])
         return err(-32601, "method not found")
 
-    def account_answer(self, target: str, data: str) -> tuple[bool, str]:
+    def account_answer(self, target: str, data: str, block: int | None = None) -> tuple[bool, str]:
         if target != POOL.lower() or data[:10] != SEL["getUserAccountData(address)"]:
             return False, "0x"
         user = address(data[10:])
-        coll, debt, lt, hf = self.accounts.get(user, (0.0, 0.0, 0.0, None))
+        if user in self.history:
+            coll, debt, lt, hf = self.history[user](self.head if block is None else block)
+        else:
+            coll, debt, lt, hf = self.accounts.get(user, (0.0, 0.0, 0.0, None))
         hf_raw = 2**256 - 1 if hf is None else int(hf * 10**18)
         return True, "0x" + "".join(word(v) for v in (int(coll * 1e8), int(debt * 1e8), 0, int(lt * 1e4), 0, hf_raw))
 
