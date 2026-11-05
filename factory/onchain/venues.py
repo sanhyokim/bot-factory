@@ -4,7 +4,7 @@ Aave・Arbitrum の清算は、額のある機会がすべて同じブロック�
 作者の言う「競争のない古い場所」を探すため、チェーンの上で清算の記録を出している仕組みを、住所を決めずに
 すべて読む。知っている清算の記録の形(下の FAMILIES)のどれかを出した仕組みを、1つずつ帳簿に残す。
 
-- どこで: 記録を出した仕組み(市場)と、それをまとめる仕組み(Compound の写しなら Comptroller)
+- どこで: 記録を出した仕組み(市場)と、それをまとめる仕組み(Compound の写しなら Comptroller、dForce の写しなら Controller)
 - 誰が: 清算した主体(記録に書いてあればそれ、無ければ取引の宛先)・取引を出した財布・ガス価格
 - 結果のまとめ: 仕組みごとの件数・市場の数・清算した主体の数・1位の取り分(件数で数える)
 
@@ -124,9 +124,11 @@ class Mapper:
             return row[0], row[1]
         venue = emitter
         if family.name == COMPTROLLER:
-            got = self._call(emitter, "comptroller()")
-            if got and len(got) >= 66 and int(got[2:66], 16):
-                venue = address(got[:66])
+            for sig in ("comptroller()", "controller()"):      # Compound 本家の写し / dForce の写し
+                got = self._call(emitter, sig)
+                if got and len(got) >= 66 and int(got[2:66], 16):
+                    venue = address(got[:66])
+                    break
         symbol = ""
         got = self._call(emitter, "symbol()")
         if got and got != "0x":

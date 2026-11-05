@@ -94,6 +94,8 @@ class FakeNode:
         self.history: dict[str, object] = {}   # 借り手 → ブロックを受けて (担保ドル, 借金ドル, 清算の線, 健康度) を返す関数
         self.price_changes: list[tuple[int, str, float]] = []   # (このブロックから, トークン, ドル)
         self.comptrollers: dict[str, str] = {}   # Compound の写しの市場 → まとめる仕組み(Comptroller)
+        # (仕組みの住所, 呼び方の署名) → 関数(data, ブロック)。答えの16進を返す。None なら revert
+        self.handlers: dict[tuple[str, str], object] = {}
 
     def client(self):
         return httpx.Client(transport=httpx.MockTransport(self.handle))
@@ -151,6 +153,12 @@ class FakeNode:
                 return err(3, "execution reverted", "0x08c379a0")
             to, data, tag = p[0]["to"].lower(), p[0]["data"], p[1]
             sel = data[:10]
+            for (h_to, h_sig), fn in self.handlers.items():
+                if h_to.lower() == to and selector(h_sig) == sel:
+                    if tag != "latest" and not self.archive:
+                        return err(-32000, "missing trie node abc (path )")
+                    got = fn(data, self.head if tag == "latest" else int(tag, 16))
+                    return err(3, "execution reverted") if got is None else ok(got)
             if sel == SEL["ADDRESSES_PROVIDER()"] and to == POOL.lower():
                 return ok("0x" + word(int(PROVIDER, 16)))
             if sel == SEL["getPriceOracle()"] and to == PROVIDER:

@@ -209,3 +209,44 @@ def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, 
             cache.close()
         if own:
             conn.close()
+
+
+def run_compound(chain_name: str = "arbitrum", days: float = 7, top: int = 5, *, chain: Chain | None = None,
+                 conn=None, out: Callable[[str], None] | None = None) -> int:
+    """python -m factory compound-scan: 清算の地図に載った Compound の写しの清算を1件ずつ深く読む
+    (利益・清算できるようになってから取られるまでの速さ・理由)。"""
+    from . import compound
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    since = int(time.time() - days * 86400)
+    try:
+        reader = compound.Reader.from_config(conn, chain, out=say)
+        st = reader.run(since)
+        say(f"Compound の写しの清算を読む: まだ読んでいない {st['todo']}件のうち {st['done']}件を読んだ"
+            f"(読み取り {st['reads']:,}回{'、読めずに飛ばした ' + str(st['skipped']) + '件' if st['skipped'] else ''})")
+        for line in compound.describe(compound.summarize(conn, chain_name, since), chain=chain_name, days=days,
+                                      top=top):
+            say(line)
+        return 0
+    except RpcError as e:
+        say(f"エラー: {e}(読み終えた分は残っている。もう一度動かすと続きから読む。"
+            "古いブロックの状態を読める接続先が要る)")
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()
