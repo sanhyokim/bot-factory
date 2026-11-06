@@ -8,6 +8,7 @@ from collections.abc import Callable
 from .. import config, db, logs
 from ..models import now_jst
 from . import actors
+from .abi import to_int
 from .cache import ChainCache
 from .chain import Chain
 from .rpc import RpcError
@@ -15,8 +16,14 @@ from .rpc import RpcError
 PROCESS = "actor-scan"
 
 
+def _start_ts(chain: Chain, start: int) -> int:
+    """表の窓の始まり。読み始めたブロックの時刻から数える(読み終えた時刻から数えると、読んでいた間の分だけ前が欠ける)。"""
+    return to_int((chain.block(start) or {}).get("timestamp", "0x0"))
+
+
 def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: Chain | None = None,
-        conn=None, out: Callable[[str], None] | None = None) -> int:
+        conn=None, out: Callable[[str], None] | None = None,
+        summary_out: dict | None = None) -> int:
     own = conn is None
     conn = conn or db.connect()
     cache = ChainCache() if chain is None else None
@@ -28,7 +35,7 @@ def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: 
         (out or print)(text)
 
     try:
-        block_seconds = config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25)
+        block_seconds = chain.block_time(config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25))
         safe = chain.safe_head()
         start = max(0, safe - int(days * 86400 / block_seconds) + 1)
         ranges = actors.plan(conn, chain_name, start, safe)
@@ -37,9 +44,11 @@ def run(chain_name: str = "arbitrum", days: float = 7, top: int = 15, *, chain: 
         scanner = actors.Scanner.from_config(conn, chain, out=say)
         added = sum(scanner.scan(a, b) for a, b in ranges)
         say(f"  新しく帳簿に足した清算 {added}件")
-        since = int(time.time() - days * 86400)
+        since = _start_ts(chain, start)
         actors.backfill_timeboost(conn, chain, since)
         summary = actors.summarize(conn, chain_name, since)
+        if summary_out is not None:
+            summary_out["actors"] = summary
         for line in actors.describe(summary, chain=chain_name, days=days, top=top,
                                     basis="block" if scanner.archive_ok else "latest"):
             say(line)
@@ -76,7 +85,7 @@ def run_watch(chain_name: str = "arbitrum", *, every: float = 0, rounds: int | N
         (out or print)(text)
 
     cfg = config.load_config()["onchain"]
-    block_seconds = cfg["chains"][chain_name].get("block_seconds", 0.25)
+    block_seconds = chain.block_time(cfg["chains"][chain_name].get("block_seconds", 0.25))
     days = cfg.get("watch", {}).get("borrower_days", 90)
     watcher = watch.Watcher.from_config(conn, chain)
     scanner = actors.Scanner.from_config(conn, chain, out=say)
@@ -168,7 +177,8 @@ def run_timing(chain_name: str = "arbitrum", days: float = 7, top: int = 10, *, 
 
 
 def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, chain: Chain | None = None,
-               conn=None, out: Callable[[str], None] | None = None) -> int:
+               conn=None, out: Callable[[str], None] | None = None,
+               summary_out: dict | None = None) -> int:
     """python -m factory venue-scan: 清算の記録を出している仕組みを、住所を決めずにすべて探す(清算の地図)。"""
     from . import venues
 
@@ -183,7 +193,7 @@ def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, 
         (out or print)(text)
 
     try:
-        block_seconds = config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25)
+        block_seconds = chain.block_time(config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25))
         safe = chain.safe_head()
         start = max(0, safe - int(days * 86400 / block_seconds) + 1)
         ranges = actors.plan(conn, chain_name, start, safe, key=venues.SCAN_KEY)
@@ -193,8 +203,10 @@ def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, 
         mapper = venues.Mapper(conn, chain, out=say)
         added = sum(mapper.scan(a, b) for a, b in ranges)
         say(f"  新しく帳簿に足した記録 {added}件")
-        for line in venues.describe(venues.summarize(conn, chain_name, int(time.time() - days * 86400)),
-                                    chain=chain_name, days=days, top=top):
+        summary = venues.summarize(conn, chain_name, _start_ts(chain, start))
+        if summary_out is not None:
+            summary_out["venues"] = summary
+        for line in venues.describe(summary, chain=chain_name, days=days, top=top):
             say(line)
         return 0
     except RpcError as e:
@@ -253,7 +265,8 @@ def run_compound(chain_name: str = "arbitrum", days: float = 7, top: int = 5, *,
 
 
 def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, chain: Chain | None = None,
-             conn=None, out: Callable[[str], None] | None = None) -> int:
+             conn=None, out: Callable[[str], None] | None = None,
+             summary_out: dict | None = None) -> int:
     """python -m factory arb-scan: 交換の記録を住所を決めずに読み、1回の取引の中で元に戻る交換(裁定)で
     稼いでいる主体を探す。"""
     from . import arbs
@@ -270,7 +283,7 @@ def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, c
 
     try:
         cfg = config.load_config()["onchain"]
-        block_seconds = cfg["chains"][chain_name].get("block_seconds", 0.25)
+        block_seconds = chain.block_time(cfg["chains"][chain_name].get("block_seconds", 0.25))
         a = cfg.get("arbs", {})
         safe = chain.safe_head()
         start = max(0, safe - int(hours * 3600 / block_seconds) + 1)
@@ -281,12 +294,15 @@ def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, c
         scanner = arbs.ArbScanner.from_config(conn, chain, out=say)
         added = sum(scanner.scan(a_, b) for a_, b in ranges)
         say(f"  新しく帳簿に足した裁定 {added:,}件")
-        since = int(time.time() - hours * 3600)
+        since = _start_ts(chain, start)
         read = scanner.sample(since, actors_n=a.get("sample_actors", 15), per_actor=a.get("sample_per_actor", 20))
         if read:
             say(f"  上位の主体の受領書を {read}件読んだ(財布・ガス代・優先レーン)")
-        for line in arbs.describe(arbs.summarize(conn, chain_name, since), chain=chain_name, hours=hours, top=top,
-                                  swaps=scanner.swaps_seen, txs=scanner.txs_seen):
+        summary = arbs.summarize(conn, chain_name, since)
+        if summary_out is not None:
+            summary_out["arbs"] = summary
+        for line in arbs.describe(summary, chain=chain_name, hours=hours, top=top, swaps=scanner.swaps_seen,
+                                  txs=scanner.txs_seen):
             say(line)
         return 0
     except RpcError as e:
@@ -299,5 +315,61 @@ def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, c
             logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
         if cache is not None:
             cache.close()
+        if own:
+            conn.close()
+
+
+def overview_line(chain_name: str, s: dict) -> str:
+    """1つのチェーンの結果を1行に(chain-survey の最後のまとめ)。"""
+    parts = [f"{chain_name}:"]
+    a = s.get("actors")
+    if a is not None:
+        net = sum(x["net_usd"] for x in a)
+        lead = f"、1位 {a[0]['net_usd'] / net:.0%}" if a and net > 0 else ""
+        parts.append(f"Aave の清算 {sum(x['count'] for x in a)}件・{len(a)}主体・純利益 ${net:,.2f}{lead}")
+    v = s.get("venues")
+    if v is not None:
+        thin = [x for x in v if x["liquidators"] <= 2 and x["count"] >= 5]
+        parts.append(f"清算の仕組み {len(v)}か所・{sum(x['count'] for x in v)}件"
+                     f"(5件以上で主体が2以下 {len(thin)}か所・{sum(x['count'] for x in thin)}件)")
+    r = s.get("arbs")
+    if r is not None:
+        acts = r["actors"]
+        lead = f"、1位 {acts[0]['gross_usd'] / r['gross_usd']:.0%}" if acts and r["gross_usd"] > 0 else ""
+        same = sum(x["same_block"] for x in acts)
+        trig = sum(x["with_trigger"] for x in acts)
+        parts.append(f"裁定 {r['count']:,}件・{len(acts)}主体・粗利 ${r['gross_usd']:,.2f}{lead}"
+                     + (f"、直前の交換と同じブロック {same / trig:.0%}" if trig else ""))
+    if len(parts) == 1:
+        parts.append("読めなかった")
+    return f"  {parts[0]}  " + " / ".join(parts[1:])
+
+
+def run_survey(chains: list[str] | None = None, days: float = 7, hours: float = 1, top: int = 5, *,
+               conn=None, out: Callable[[str], None] | None = None, chain_factory=None) -> int:
+    """python -m factory chain-survey: チェーンごとに、Aave の清算(actor-scan)・清算の地図(venue-scan)・
+    裁定(arb-scan)を順に動かし、最後に1チェーン1行でまとめる。1つのチェーンで失敗しても、次のチェーンへ進む。"""
+    own = conn is None
+    conn = conn or db.connect()
+    say = out or print
+    names = chains or [c for c in config.load_config()["onchain"]["chains"] if c != "arbitrum"]
+    results: dict[str, dict] = {}
+    try:
+        for i, name in enumerate(names, 1):
+            say(f"===== {i}/{len(names)} {name} =====")
+            s: dict = {}
+            results[name] = s
+            for step, fn, span in (("Aave の清算", run, days), ("清算の地図", run_venues, days),
+                                   ("裁定", run_arbs, hours)):
+                try:
+                    chain = chain_factory(name) if chain_factory else None
+                    fn(name, span, top, chain=chain, conn=conn, out=say, summary_out=s)
+                except Exception as e:  # noqa: BLE001  1つのチェーン・1つの道具の失敗で、ほかを止めない
+                    say(f"  {name} の{step}は読めなかった({type(e).__name__}: {str(e)[:120]})")
+        say(f"===== まとめ(清算は直近{days:g}日、裁定は直近{hours:g}時間) =====")
+        for name in names:
+            say(overview_line(name, results[name]))
+        return 0
+    finally:
         if own:
             conn.close()

@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from .. import config
 from .abi import to_int
-from .rpc import RangeTooLarge, Relay
+from .rpc import RangeTooLarge, Relay, RpcError
 
 HEAD_TTL_SECONDS = 10      # 最新のブロック番号を覚えておく秒数(確定の判定に使うだけなので少し古くてよい)
 
@@ -27,6 +27,7 @@ class Chain:
         self._head: int | None = None
         self._head_at = 0.0
         self.log_step = max_log_blocks      # 今の「1回で読むブロック数」。断られたら半分にして、この後も使う
+        self._block_time: float | None = None
 
     @classmethod
     def from_config(cls, name: str, **relay_kw) -> Chain:
@@ -39,6 +40,20 @@ class Chain:
         n = to_int(self.relay.call("eth_blockNumber", [], purpose=purpose))
         self._head, self._head_at = n, self._clock()
         return n
+
+    def block_time(self, fallback: float, *, sample: int = 10_000, purpose: str = "research") -> float:
+        """実際のブロックの間隔(秒)。最新と sample ブロック前の時刻から測る(チェーンごとに違い、変わることもある)。
+        読めなければ fallback(設定の目安)。"""
+        if self._block_time is None:
+            try:
+                head = self.head(purpose)
+                a = self.block(head, purpose=purpose) or {}
+                b = self.block(max(0, head - sample), purpose=purpose) or {}
+                dt = to_int(a.get("timestamp", "0x0")) - to_int(b.get("timestamp", "0x0"))
+                self._block_time = dt / min(sample, head) if dt > 0 and head else fallback
+            except RpcError:
+                self._block_time = fallback
+        return self._block_time
 
     def safe_head(self, purpose: str = "research") -> int:
         """これ以下のブロックは確定したとみなす(キャッシュしてよい)。"""
