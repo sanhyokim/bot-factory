@@ -163,7 +163,8 @@ def test_summary_by_actor(conn):
     b1 = s["actors"][0]
     assert (b1["count"], b1["same_block"], b1["with_trigger"], b1["median_swaps"]) == (2, 1, 2, 2.5)
     assert b1["tokens"] == ["USDC", "WETH"] and b1["boosted"] == 1 and b1["boost_known"] == 2
-    assert b1["net_est"] == pytest.approx(40 - 0.06)
+    assert b1["sampled_gross"] == pytest.approx(40) and b1["sampled_gas"] == pytest.approx(0.06)
+    assert b1["sampled_net"] == pytest.approx(40 - 0.06)
     assert s["actors"][2]["unpriced"] == 1
     assert {k: len(v) for k, v in s["sizes"].items() if v} == {"10ドル未満": 1, "100ドル未満": 2}
 
@@ -201,7 +202,11 @@ def test_windows_and_routes(conn):
     add("t2", 205, BOT1, f"{P2},{P1}", "USDC>WETH>USDC", 100.0, 202)       # 同じ経路(向きが逆)・3ブロック後
     add("t3", 300, BOT2, f"{P1},{P2}", "WETH>USDC>WETH", 100.0, 300)       # 同じ経路・同じブロック
     add("t4", 400, BOT2, f"{P3},{P4},{P1}", "WETH>WBTC>USDC>WETH", 50.0, None)
+    # 大きい1件に手数料を積んで、ブロックの先頭に入った(受領書を読んだ分)
+    conn.execute("UPDATE chain_arbs SET sampled = 1, gas_usd = 700, tx_index = 0, sender = '0xe1' WHERE tx_hash = 't1'")
     s = arbs.summarize(conn, "hyperevm", 0)
+    b1 = s["actors"][0]
+    assert (b1["sampled_gross"], b1["sampled_gas"], b1["sampled_net"]) == (800.0, 700.0, 100.0)
     assert s["windows"]["同じブロック"] == [1, 100.0] and s["windows"]["次のブロック"] == [1, 800.0]
     assert s["windows"]["2〜5ブロック後"] == [1, 100.0] and s["windows"]["直前の交換が読んだ範囲に無い"] == [1, 50.0]
     r1, r2 = s["routes"]
@@ -213,6 +218,8 @@ def test_windows_and_routes(conn):
             "直前の交換が読んだ範囲に無い 1件($50.00・5%)") in text
     assert (f"1. WETH・USDC(交換の場 2)  3件  $1,000.00  主体 2(1位 {BOT1} 90%)  次のブロックまでに取られた粗利 90%  "
             "遅れの中央値 1ブロック") in text
+    assert "| 1件: 1財布  $700.0000  $100.00($800.00−$700.00、88%)" in text      # 全件に掛けて大赤字、にはしない
+    assert "WETH>USDC>WETH(2回)  直前の交換から 1ブロック・1秒  ガス代 $700.00・0番目" in text
 
 
 def test_arb_scan_command_prints_the_table(conn):
@@ -225,6 +232,7 @@ def test_arb_scan_command_prints_the_table(conn):
     assert "1位の取り分(粗利): 89%" in text
     assert f"1. {BOT1}  2件  $40.00  USDC・WETH  V3×3・V2×1・PancakeV3×1  2.5回  1/2件" in text
     assert "WETH>WBTC>USDC>WETH(3回)" in text
+    assert "$39.94($40.00−$0.06、0%)" in text
 
 
 def test_window_starts_at_the_first_block_read(conn):

@@ -425,6 +425,11 @@ def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> dict:
         sampled = [r for r in rs if r["sampled"]]
         gas = [r["gas_usd"] for r in sampled if r["gas_usd"] is not None]
         avg_gas = statistics.mean(gas) if gas else None
+        # 受領書を読んだのは粗利の大きい裁定なので、ガス代の平均を全件に掛けると、大きい機会ほど手数料を
+        # 積む主体で大きく外れる。読んだ分だけで、粗利・ガス代・純利益を出す
+        both = [r for r in sampled if r["gas_usd"] is not None and r["gross_usd"] is not None]
+        s_gross = sum(r["gross_usd"] for r in both)
+        s_gas = sum(r["gas_usd"] for r in both)
         known_boost = [r for r in sampled if r["timeboosted"] in (0, 1)]
         trig = [r for r in rs if r["trigger_block"] is not None]
         delays = [r["trigger_seconds"] for r in trig]
@@ -436,7 +441,7 @@ def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> dict:
             "same_block": sum(1 for r in trig if r["trigger_block"] == r["block"]), "with_trigger": len(trig),
             "median_delay": statistics.median(delays) if delays else None,
             "sampled": len(sampled), "avg_gas": avg_gas,
-            "net_est": gross - avg_gas * len(rs) if avg_gas is not None else None,
+            "sampled_gross": s_gross, "sampled_gas": s_gas, "sampled_net": s_gross - s_gas if both else None,
             "senders": len({r["sender"] for r in sampled if r["sender"]}),
             "boosted": sum(1 for r in known_boost if r["timeboosted"] == 1), "boost_known": len(known_boost),
             "median_index": statistics.median(r["tx_index"] for r in sampled if r["tx_index"] is not None)
@@ -476,7 +481,8 @@ def describe(s: dict, *, chain: str, hours: float, top: int = 15, swaps: int = 0
     out.append("  1件の粗利の大きさ: " + "、".join(f"{name} {len(v):,}件(${sum(v):,.2f})"
                                           for name, v in s["sizes"].items() if v))
     out.append("  順位 主体 件数 粗利 増えたトークン 交換の場 交換の数(中央値) 直前の交換と同じブロック "
-               "遅れの中央値 | 受領書を読んだ分: 財布 ガス代(1件) 純利益の見込み 優先レーン 取引の順番(中央値)")
+               "遅れの中央値 | 受領書を読んだ分(粗利の大きい順): 財布 ガス代(1件の平均) 純利益(粗利−ガス代、"
+               "ガス代が粗利に占める割合) 優先レーン 取引の順番(中央値)")
     for i, v in enumerate(s["actors"][:top], 1):
         kinds = "・".join(f"{k}×{n}" for k, n in v["kinds"].most_common(3))
         same = f"{v['same_block']}/{v['with_trigger']}件" if v["with_trigger"] else "-"
@@ -486,7 +492,10 @@ def describe(s: dict, *, chain: str, hours: float, top: int = 15, swaps: int = 0
                 + f"  {'・'.join(v['tokens'])}  {kinds}  {v['median_swaps']:g}回  {same}  {med}")
         if v["sampled"]:
             gas = f"${v['avg_gas']:,.4f}" if v["avg_gas"] is not None else "-"
-            net = f"${v['net_est']:,.2f}" if v["net_est"] is not None else "-"
+            net = "-"
+            if v["sampled_net"] is not None:
+                share = f"、{v['sampled_gas'] / v['sampled_gross']:.0%}" if v["sampled_gross"] > 0 else ""
+                net = f"${v['sampled_net']:,.2f}(${v['sampled_gross']:,.2f}−${v['sampled_gas']:,.2f}{share})"
             idx = f"{v['median_index']:g}番目" if v["median_index"] is not None else "-"
             line += (f"  | {v['sampled']}件: {v['senders']}財布  {gas}  {net}  "
                      f"{v['boosted']}/{v['boost_known']}件  {idx}")
@@ -511,6 +520,9 @@ def describe(s: dict, *, chain: str, hours: float, top: int = 15, swaps: int = 0
     for r in s["biggest"]:
         delay = (f"直前の交換から {r['block'] - r['trigger_block']:,}ブロック・{r['trigger_seconds']:,}秒"
                  if r["trigger_block"] is not None else "直前の交換は読んだ範囲に無い")
+        paid = ""
+        if r["sampled"] and r["gas_usd"] is not None:
+            paid = f"  ガス代 ${r['gas_usd']:,.2f}" + (f"・{r['tx_index']}番目" if r["tx_index"] is not None else "")
         out.append(f"    {_when(r['ts'])}  ブロック {r['block']:,}  {r['actor'] or '不明'}  ${r['gross_usd']:,.2f}  "
-                   f"{r['path']}({r['swaps']}回)  {delay}")
+                   f"{r['path']}({r['swaps']}回)  {delay}{paid}")
     return out
