@@ -5,7 +5,9 @@
   調査が自分の分を使い切っても、paper と本番の分は残る(作者は回線の詰まりで同時に動けるBOTが約70本で止まった)
 - 断られた接続先(429)は60秒、使える量を使い切った接続先(1日・プランの上限)は30分休ませる
 - つながらない・壊れた答え(5xx・時間切れ)は30秒休ませ、続けば60秒・120秒…(10分まで)と延ばす
-- 「取引が通らない(revert)」「ログの範囲が広すぎる」は接続先の不調ではないので休ませず、呼んだ側に返す
+- 「取引が通らない(revert)」「ログの範囲が広すぎる」は接続先の不調ではないので休ませず、呼んだ側に返す。
+  広い範囲を受ける接続先がどれも使えず、狭い範囲なら今すぐ読める接続先がある時は、あきらめずに
+  「範囲が広すぎる」として返し、呼んだ側(chain.py)に範囲を狭めさせる
 - 同じ読み方(例: 古いブロックの状態)を3回続けて断った接続先は、ほかの接続先がその読み方に答えられるなら、
   その読み方の時だけ10分外す(無料の接続先は古いブロックを読ませないことが多く、毎回試すと回数の無駄)
 - 待てる長さは使い道ごとに違う。本番は機会が消えるので短く、調査は急がないので長く待つ
@@ -180,6 +182,8 @@ class Relay:
         while attempts < max_attempts:
             ep, wait = self._pick(purpose, tried, skip, span, kind)
             if ep is None:
+                if wait == math.inf or self._clock() + wait > deadline:
+                    self._raise_if_narrower(span, skip, kind, deadline)
                 if wait == math.inf:
                     break
                 if self._clock() + wait > deadline:
@@ -195,6 +199,7 @@ class Relay:
                 if e.hard:
                     skip.add(ep.url)
                 continue
+        self._raise_if_narrower(span, skip, kind, deadline)
         if span is not None and not any(ep.fits(span) for ep in self.endpoints):
             limits = [ep.log_limit for ep in self.endpoints if ep.log_limit]
             notes = " / ".join(f"{_short(ep.url)}: {ep.log_note}" for ep in self.endpoints if ep.log_note)
@@ -227,6 +232,23 @@ class Relay:
         if ready:
             return min(ready, key=lambda r: r[:3])[3], 0.0
         return None, min(waits)
+
+    def _raise_if_narrower(self, span: int | None, skip: set[str], kind: str, deadline: float) -> None:
+        """この範囲を受ける接続先がどれも使えない(はっきり断った・外した・待てる長さを過ぎて休む)が、範囲を
+        狭めれば待てる長さのうちに使える接続先がある時は、RangeTooLarge で返す(呼んだ側が、その接続先の
+        上限まで狭めて読み直す)。狭められる接続先が複数あれば、一番広く読めるものに合わせる。
+        例: 住所を決めないログを断る接続先と止まった接続先しか広い範囲を受けず、狭い範囲なら読める接続先がある。"""
+        if span is None:
+            return
+        now = self._clock()
+        usable = [ep for ep in self.endpoints
+                  if ep.log_limit and ep.log_limit < span and ep.url not in skip
+                  and ep.blocked.get(kind, 0) <= now and ep.cooldown_until <= deadline]
+        if usable:
+            best = max(usable, key=lambda ep: ep.log_limit)
+            raise RangeTooLarge(f"{self.chain}: {span:,}ブロックのログを読める接続先が今は無い。"
+                                f"{_short(best.url)} なら{best.log_limit:,}ブロックまで読める"
+                                f"(直近のエラー: {self._last_errors()})", best.log_limit)
 
     def _send(self, ep: Endpoint, method: str, params: list, purpose: str, kind: str | None = None):
         kind = kind or _kind(method, params)
@@ -263,9 +285,10 @@ class Relay:
             span = _log_span(method, params)
             if span is not None and _RANGE.search(msg):
                 # この接続先の上限を覚え、この呼び出しは別の接続先に回す(休ませない)
+                # (上限より広い範囲には fits() で使わなくなるので、hard にはしない。狭めた時に使う)
                 ep.log_limit = min(ep.log_limit or span, _limit_from(msg, span))
-                ep.log_note = msg[:120]
-                self._fail(ep, purpose, 0, f"ログの範囲で断られた({msg[:80]})", hard=True)
+                ep.log_note = msg[:160]
+                self._fail(ep, purpose, 0, f"ログの範囲で断られた({span:,}ブロック: {msg[:140]})")
             if _QUOTA.search(msg):
                 self._used_up(ep, purpose, msg)
             if code == 429 or _RATE.search(msg):
@@ -362,9 +385,13 @@ def _log_span(method: str, params: list) -> int | None:
 
 def _kind(method: str, params: list) -> str:
     """読み方の種類。ブロックの番号を指す読み方は「@old」を付けて分ける(古いブロックを読ませない接続先が多い)。
-    "latest" で読む呼び方は、古いブロックで断られ続けても外さない。"""
+    "latest" で読む呼び方は、古いブロックで断られ続けても外さない。
+    住所を決めないログ(清算の地図・裁定)は「@any」を付けて分ける(住所を決めたログだけ読ませる接続先がある)。"""
     if method == "eth_getLogs":
         old = _log_span(method, params) is not None
+        flt = params[0] if params and isinstance(params[0], dict) else {}
+        if not flt.get("address"):
+            method = f"{method}@any"
     else:
         i = _BLOCK_ARG.get(method)
         tag = params[i] if i is not None and len(params) > i else None
@@ -374,7 +401,7 @@ def _kind(method: str, params: list) -> str:
 
 def kind_name(kind: str) -> str:
     """画面に出す読み方の名前。"""
-    return kind.replace("@old", "(古いブロック)")
+    return kind.replace("@any", "(住所を決めずに)").replace("@old", "(古いブロック)")
 
 
 def _limit_from(msg: str, span: int) -> int:

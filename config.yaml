@@ -185,8 +185,7 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
       cache_depth: 300
       max_log_blocks: 10000
       arb_log_blocks: 100
-      endpoints:
-        - https://polygon-rpc.com
+      endpoints:                                   # polygon-rpc.com は 11/6 に止まっていた(tenant disabled)ので外した
         - https://polygon-bor-rpc.publicnode.com
         - https://polygon.drpc.org
         - https://1rpc.io/matic
@@ -247,6 +246,8 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
       endpoints:
         - https://ethereum-rpc.publicnode.com
         - https://eth.drpc.org
+        - https://eth.merkle.io                    # ログは1回1,000ブロックまで(sqd.dev の調べ、2026-06)
+        - https://rpc.mevblocker.io                # ログは1回1万件まで
         - https://eth.llamarpc.com
         - https://1rpc.io/eth
       protocols:

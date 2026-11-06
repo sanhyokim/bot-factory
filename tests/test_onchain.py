@@ -294,6 +294,50 @@ def test_old_reads_are_not_skipped_when_no_endpoint_can_serve_them():
     assert len(node.calls) == 10
 
 
+def addressless(body):
+    return body["method"] == "eth_getLogs" and not body["params"][0].get("address")
+
+
+def test_logs_narrow_when_the_wide_endpoints_refuse_for_other_reasons():
+    """11/6 Polygon: 広い範囲を受けそうな接続先は「住所を決めて」と断るか止まっていて、狭い範囲なら読める
+    接続先(drpc)が残っていた。あきらめずに範囲を狭め、読めた所まで進む。"""
+    node = FakeNode(head=100_000)
+    node.logs = [liquidation_log(b) for b in (10, 4_000, 9_999)]
+    refuse(node, A, "Please specify an address in your request", addressless)
+    refuse(node, B, "ranges over 10000 blocks are not supported on free plan",
+           lambda body: body["method"] == "eth_getLogs"
+           and int(body["params"][0]["toBlock"], 16) - int(body["params"][0]["fromBlock"], 16) + 1 > 1_000,
+           code=35)
+    node.mode[C] = "down"
+    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=10_000)
+    logs = chain.logs(from_block=1, to_block=10_000, topics=[check.LIQUIDATION_CALL])
+    assert [int(lg["blockNumber"], 16) for lg in logs] == [10, 4_000, 9_999]
+    assert 500 < chain.log_step <= 1_000              # 半分ずつ狭め、B が読める広さで止まった
+    b = chain.relay.endpoints[1]
+    assert b.log_limit == chain.log_step and b.cooldown_until == 0 and "ranges over 10000" in b.log_note
+    assert len(node.calls) < 80
+
+
+def test_addressless_logs_are_skipped_separately():
+    """住所を決めないログだけを断る接続先(publicnode)は、その読み方の時だけ外す。住所を決めたログには使う。"""
+    node = FakeNode(head=100_000)
+    refuse(node, A, "Please specify an address in your request", addressless)
+    clock = Clock()
+    relay = make_relay(node, urls=(A, B), clock=clock, skip_after=3, skip_seconds=600)
+    any_logs = [{"fromBlock": hex(1), "toBlock": hex(100), "topics": [check.LIQUIDATION_CALL]}]
+    for _ in range(6):
+        assert relay.call("eth_getLogs", any_logs) == []
+    a = relay.endpoints[0]
+    assert a.blocked.get("eth_getLogs@any@old", 0) > clock.t and "eth_getLogs@old" not in a.blocked
+    node.calls.clear()
+    pool_logs = [{"fromBlock": hex(1), "toBlock": hex(100), "address": POOL}]
+    for _ in range(4):
+        relay.call("eth_getLogs", pool_logs)
+    assert A in [u for u, _ in node.calls]            # 住所を決めたログは、まだ A でも読む
+    notes = "\n".join(check.endpoint_notes(relay))
+    assert "(住所を決めずに)(古いブロック)「Please specify an address" in notes
+
+
 def test_success_clears_the_count_of_refusals():
     node = FakeNode()
     flaky = {"on": True}
