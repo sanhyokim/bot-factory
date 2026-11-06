@@ -4,7 +4,7 @@
 無かった(11/5)。作者の稼ぎのもう1つの柱は「アトミック裁定」(1回の取引の中で、いくつかの交換の場を回って
 元のトークンに戻り、増えた分を取る)。住所を決めずに交換の記録を読み、1回の取引の中で元に戻る交換を探す。
 
-- 何を: 交換の記録(Uniswap V2 型・V3 型・PancakeSwap V3・Balancer)。量が多いので、読んだ記録は
+- 何を: 交換の記録(Uniswap V2 型・V3 型・PancakeSwap V3・Balancer・Velodrome 型)。量が多いので、読んだ記録は
   キャッシュに残さない
 - 裁定の見分け方: 取引の中の交換をすべて足して、どのトークンも減っておらず、どれかが増えていれば裁定。
   ふつうの人の交換(A を出して B を受け取る)は A が減るので入らない。清算のついでの交換も入らない
@@ -18,6 +18,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 import statistics
 from collections import Counter, defaultdict
@@ -45,8 +46,11 @@ KINDS = {
     topic("Swap(address,address,int256,int256,uint160,uint128,int24)"): "V3",
     topic("Swap(address,address,int256,int256,uint160,uint128,int24,uint128,uint128)"): "PancakeV3",
     topic("Swap(bytes32,address,address,uint256,uint256)"): "Balancer",
+    topic("Swap(address,address,uint256,uint256,uint256,uint256)"): "Solidly",   # Velodrome・Aerodrome など
 }
-SCAN_KEY = "arbs_v1"
+# 読み終えた範囲の名前。交換の記録の形を足したら名前が変わり、最初から読み直す
+SCAN_KEY = "arbs_" + hashlib.sha256("".join(sorted(KINDS)).encode()).hexdigest()[:8]
+V2_LIKE = ("V2", "Solidly")             # 答えが (amount0In, amount1In, amount0Out, amount1Out) の形
 PRICE_BUCKET = 14_400          # 値段は約1時間(0.25秒 × 14,400)ごとに読む
 TOLERANCE = 10_000             # 途中のトークンが、通った量の 1/10,000 より減っていれば裁定とみなさない
 
@@ -120,7 +124,7 @@ def parse_swap(log: dict) -> Swap | None:
 
 def _parse(log: dict, kind: str) -> Swap | None:
     t, w = log["topics"], words(log["data"])
-    if len(t) < (4 if kind == "Balancer" else 3) or len(w) < (4 if kind == "V2" else 2):
+    if len(t) < (4 if kind == "Balancer" else 3) or len(w) < (4 if kind in V2_LIKE else 2):
         return None
     base = {"tx": log["transactionHash"], "block": to_int(log["blockNumber"]), "log_index": to_int(log["logIndex"]),
             "kind": kind}
@@ -128,7 +132,7 @@ def _parse(log: dict, kind: str) -> Swap | None:
         return Swap(**base, pool=t[1].lower(), sender=None, deltas=(-w[0], w[1]),
                     tokens=(address(t[2]), address(t[3])))
     pool, sender = address(log["address"]), address(t[1])
-    if kind == "V2":
+    if kind in V2_LIKE:
         return Swap(**base, pool=pool, sender=sender, deltas=(w[2] - w[0], w[3] - w[1]))
     return Swap(**base, pool=pool, sender=sender, deltas=(-_signed(w[0]), -_signed(w[1])))
 
@@ -190,7 +194,7 @@ class ArbScanner:
         a = cfg.get("arbs", {})
         return cls(conn, chain, scanner=actors.Scanner.from_config(conn, chain, out=kw.get("out", print)),
                    multicall=cfg["chains"][chain.name]["protocols"].get("multicall3"),
-                   log_blocks=a.get("log_blocks", 500), **kw)
+                   log_blocks=cfg["chains"][chain.name].get("arb_log_blocks", a.get("log_blocks", 500)), **kw)
 
     # --- 交換の場のトークン ---
     def pool_tokens(self, pools: list[str]) -> dict[str, tuple[str, str]]:

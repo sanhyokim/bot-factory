@@ -168,6 +168,15 @@ def test_summary_by_actor(conn):
     assert {k: len(v) for k, v in s["sizes"].items() if v} == {"10ドル未満": 1, "100ドル未満": 2}
 
 
+def test_velodrome_style_swap_reads_like_v2():
+    solidly = topic("Swap(address,address,uint256,uint256,uint256,uint256)")
+    s = arbs.parse_swap({"address": P2, "blockNumber": "0x1", "transactionHash": "0xab", "logIndex": "0x0",
+                         "topics": [solidly, pad(BOT1), pad(BOT1)],
+                         "data": "0x" + word(0) + word(3) + word(5) + word(0)})
+    assert (s.kind, s.deltas) == ("Solidly", (5, -3))
+    assert arbs.SCAN_KEY.startswith("arbs_") and len(arbs.SCAN_KEY) == 13
+
+
 def test_parse_swap_signs():
     s = arbs.parse_swap({"address": P1, "blockNumber": "0x1", "transactionHash": "0xab", "logIndex": "0x0",
                          "topics": [V3, pad(BOT1), pad(BOT1)],
@@ -188,3 +197,13 @@ def test_arb_scan_command_prints_the_table(conn):
     assert "1位の取り分(粗利): 89%" in text
     assert f"1. {BOT1}  2件  $40.00  USDC・WETH  V3×3・V2×1・PancakeV3×1  2.5回  1/2件" in text
     assert "WETH>WBTC>USDC>WETH(3回)" in text
+
+
+def test_window_starts_at_the_first_block_read(conn):
+    """表の窓は、読み始めたブロックの時刻から数える(読み終えた時刻からではない)。"""
+    node, _ = setup()
+    hours = (99_900 - 991 + 1) / 14_400                    # ブロック 991 から読む
+    lines: list[str] = []
+    assert scan_command.run_arbs("arbitrum", hours, chain=make_chain(node), conn=conn, out=lines.append) == 0
+    assert "新しく帳簿に足した裁定 4件" in "\n".join(lines)
+    assert f"直近{hours:g}時間、4件" in "\n".join(lines)    # 最初の裁定(ブロック 1,000)も表に入る

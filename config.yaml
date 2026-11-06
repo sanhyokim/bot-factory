@@ -141,7 +141,7 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
   timing:                   # 取られるまでの速さ(liq-timing)
     max_back_blocks: 2419200  # 健康度が1を割ったブロックを、清算からさかのぼって探す最大のブロック数(約7日)
   arbs:                     # 裁定で稼いでいる主体を探す(arb-scan)
-    log_blocks: 500         # 交換の記録を1回で読むブロック数(記録が多いので狭く。1回の答えが大きすぎると時間切れになる)
+    log_blocks: 500         # 交換の記録を1回で読むブロック数(記録が多いので狭く。1回の答えが大きすぎると時間切れになる)。チェーンごとの arb_log_blocks が優先
     sample_actors: 15       # 受領書を読んで財布・ガス代・優先レーンを確かめる主体の数(粗利の多い順)
     sample_per_actor: 20    # 1主体あたり、受領書を読む裁定の数(粗利の大きい順)
   chains:
@@ -161,3 +161,110 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
         aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"   # 貸し借りの仕組み(清算の記録を出す)
         weth: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"           # ガス代をドルにする時の ETH の値段に使う
         multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"     # 多くの読み取りを1回にまとめる仕組み(どのチェーンも同じ住所)
+    # --- 第0期を広げるチェーン(2026-11-06。作者が名前を出しているチェーン)。住所は Aave の住所録(bgd-labs/aave-address-book)と
+    #     HyperLend の資料から写した。block_seconds は目安で、道具はチェーンから実際のブロックの間隔を測って使う。
+    #     arb_log_blocks は arb-scan で交換の記録を1回で読むブロック数(交換の多いチェーンほど狭く)
+    optimism:
+      chain_id: 10
+      block_seconds: 2
+      cache_depth: 300
+      max_log_blocks: 10000
+      arb_log_blocks: 150
+      endpoints:
+        - https://mainnet.optimism.io
+        - https://optimism-rpc.publicnode.com
+        - https://optimism.drpc.org
+        - https://1rpc.io/op
+      protocols:
+        aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+        weth: "0x4200000000000000000000000000000000000006"           # ガス代は ETH
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    polygon:
+      chain_id: 137
+      block_seconds: 2
+      cache_depth: 300
+      max_log_blocks: 10000
+      arb_log_blocks: 100
+      endpoints:
+        - https://polygon-rpc.com
+        - https://polygon-bor-rpc.publicnode.com
+        - https://polygon.drpc.org
+        - https://1rpc.io/matic
+      protocols:
+        aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+        weth: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"           # ガス代は POL(WPOL の値段で読む)
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    avalanche:
+      chain_id: 43114
+      block_seconds: 2
+      cache_depth: 300
+      max_log_blocks: 2048
+      arb_log_blocks: 150
+      endpoints:
+        - https://api.avax.network/ext/bc/C/rpc
+        - https://avalanche-c-chain-rpc.publicnode.com
+        - https://avalanche.drpc.org
+        - https://1rpc.io/avax/c
+      protocols:
+        aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+        weth: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"           # ガス代は AVAX(WAVAX の値段で読む)
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    gnosis:
+      chain_id: 100
+      block_seconds: 5
+      cache_depth: 120
+      max_log_blocks: 10000
+      arb_log_blocks: 200
+      endpoints:
+        - https://rpc.gnosischain.com
+        - https://gnosis-rpc.publicnode.com
+        - https://gnosis.drpc.org
+        - https://1rpc.io/gnosis
+      protocols:
+        aave_v3_pool: "0xb50201558B00496A145fE76f7424749556E326D8"
+        weth: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"           # ガス代は xDAI(WXDAI の値段で読む)
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    hyperevm:
+      chain_id: 999
+      block_seconds: 2
+      cache_depth: 300
+      max_log_blocks: 1000
+      arb_log_blocks: 200
+      endpoints:
+        - https://rpc.hyperliquid.xyz/evm
+        - https://rpc.hypurrscan.io
+        - https://hyperliquid.drpc.org
+      protocols:
+        aave_v3_pool: "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"   # HyperLend(Aave v3 の写し)
+        weth: "0x5555555555555555555555555555555555555555"           # ガス代は HYPE(wHYPE の値段で読む)
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    ethereum:
+      chain_id: 1
+      block_seconds: 12
+      cache_depth: 64
+      max_log_blocks: 2000
+      arb_log_blocks: 20
+      endpoints:
+        - https://ethereum-rpc.publicnode.com
+        - https://eth.drpc.org
+        - https://eth.llamarpc.com
+        - https://1rpc.io/eth
+      protocols:
+        aave_v3_pool: "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
+        weth: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+    bsc:
+      chain_id: 56
+      block_seconds: 0.75
+      cache_depth: 800
+      max_log_blocks: 5000
+      arb_log_blocks: 20
+      endpoints:
+        - https://bsc-rpc.publicnode.com
+        - https://bsc-dataseed.bnbchain.org
+        - https://bsc.drpc.org
+        - https://1rpc.io/bnb
+      protocols:
+        aave_v3_pool: "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
+        weth: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"           # ガス代は BNB(WBNB の値段で読む)
+        multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"

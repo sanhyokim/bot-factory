@@ -93,6 +93,13 @@ def main(argv: list[str] | None = None) -> int:
     cs.add_argument("--days", type=float, default=7, help="さかのぼる日数(venue-scan で読んだ清算のうち)")
     cs.add_argument("--top", type=int, default=5, help="仕組みごとに出す、遅く取られた清算の数")
 
+    sv = sub.add_parser("chain-survey", help="Arbitrum 以外のチェーン(config.yaml)ごとに、Aave の清算・清算の地図・裁定を"
+                                             "順に読み、最後に1チェーン1行でまとめる(読み取りだけ。第0期)")
+    sv.add_argument("--chains", default="", help="カンマ区切りのチェーンの名前(既定は config.yaml の Arbitrum 以外すべて)")
+    sv.add_argument("--days", type=float, default=7, help="清算をさかのぼる日数")
+    sv.add_argument("--hours", type=float, default=1, help="裁定をさかのぼる時間")
+    sv.add_argument("--top", type=int, default=5, help="チェーンごとの表に出す数")
+
     ab = sub.add_parser("arb-scan", help="交換の記録を読み、1回の取引の中で元のトークンに戻る交換(裁定)で"
                                          "稼いでいる主体を探して表にする(読み取りだけ。第0期)")
     ab.add_argument("--chain", default="arbitrum")
@@ -160,6 +167,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "venue-scan":
         from .onchain import scan_command
         return scan_command.run_venues(args.chain, args.days, args.top)
+    if args.cmd == "chain-survey":
+        from .onchain import scan_command
+        chains = [c.strip() for c in args.chains.split(",") if c.strip()] or None
+        return scan_command.run_survey(chains, args.days, args.hours, args.top)
     if args.cmd == "arb-scan":
         from .onchain import scan_command
         return scan_command.run_arbs(args.chain, args.hours, args.top)
