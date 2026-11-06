@@ -187,7 +187,7 @@ class FakeNode:
                 return err(3, "execution reverted")
             at = self.head if tag == "latest" else int(tag, 16)
             if sel == SEL["aggregate3((address,bool,bytes)[])"] and to == MULTICALL:
-                return ok(join_results([self.account_answer(t, d, at) for t, d in split_aggregate3(data)]))
+                return ok(join_results([self.sub_answer(t, d, at) for t, d in split_aggregate3(data)]))
             if sel == SEL["getUserAccountData(address)"] and to == POOL.lower():
                 if tag != "latest" and not self.archive:
                     return err(-32000, "missing trie node abc (path )")
@@ -204,6 +204,14 @@ class FakeNode:
             return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi
                        and (t0 is None or lg["topics"][0] in t0) and (not want or lg["address"].lower() == want)])
         return err(-32601, "method not found")
+
+    def sub_answer(self, target: str, data: str, block: int) -> tuple[bool, str]:
+        """aggregate3 の中の1つの呼び出し。handlers にあればそれ、無ければ Aave の健康度。"""
+        for (h_to, h_sig), fn in self.handlers.items():
+            if h_to.lower() == target and selector(h_sig) == data[:10]:
+                got = fn(data, block)
+                return (False, "0x") if got is None else (True, got)
+        return self.account_answer(target, data, block)
 
     def account_answer(self, target: str, data: str, block: int | None = None) -> tuple[bool, str]:
         if target != POOL.lower() or data[:10] != SEL["getUserAccountData(address)"]:

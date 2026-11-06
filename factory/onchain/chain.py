@@ -91,8 +91,9 @@ class Chain:
 
     # --- ログ ---
     def logs(self, *, from_block: int, to_block: int, address: str | list[str] | None = None,
-             topics: list | None = None, purpose: str = "research") -> list[dict]:
+             topics: list | None = None, purpose: str = "research", cache: bool = True) -> list[dict]:
         """ログを古い順に。範囲は log_step の倍数の区切りで読む(同じ区切りなら2回目はキャッシュから返る)。
+        cache=False なら、確定したブロックでもキャッシュに残さない(交換の記録のように量が多いもの)。
         どの接続先にも広すぎると断られたら、受けてくれそうな広さ(分からなければ半分)にして読み直す。
         min_log_blocks より狭くしないと読めない時は、あきらめて RangeTooLarge(断られ方の取り違えで、
         何万回も呼ぶことにならないように)。"""
@@ -109,7 +110,7 @@ class Chain:
                 flt["topics"] = topics
             try:
                 rows = self.relay.call("eth_getLogs", [flt], purpose=purpose,
-                                       cache=self._settled(end, purpose))
+                                       cache=cache and self._settled(end, purpose))
             except RangeTooLarge as e:
                 step = e.max_span if e.max_span and e.max_span < self.log_step else self.log_step // 2
                 if step < self.min_log_blocks:

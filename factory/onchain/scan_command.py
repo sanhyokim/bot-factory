@@ -250,3 +250,54 @@ def run_compound(chain_name: str = "arbitrum", days: float = 7, top: int = 5, *,
             cache.close()
         if own:
             conn.close()
+
+
+def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, chain: Chain | None = None,
+             conn=None, out: Callable[[str], None] | None = None) -> int:
+    """python -m factory arb-scan: 交換の記録を住所を決めずに読み、1回の取引の中で元に戻る交換(裁定)で
+    稼いでいる主体を探す。"""
+    from . import arbs
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    try:
+        cfg = config.load_config()["onchain"]
+        block_seconds = cfg["chains"][chain_name].get("block_seconds", 0.25)
+        a = cfg.get("arbs", {})
+        safe = chain.safe_head()
+        start = max(0, safe - int(hours * 3600 / block_seconds) + 1)
+        ranges = actors.plan(conn, chain_name, start, safe, key=arbs.SCAN_KEY)
+        todo = sum(b - a_ + 1 for a_, b in ranges)
+        say(f"交換の記録を、住所を決めずに読む: ブロック {start:,}〜{safe:,}(まだ読んでいない {todo:,}ブロック。"
+            "記録が多いので、初回は時間がかかる)")
+        scanner = arbs.ArbScanner.from_config(conn, chain, out=say)
+        added = sum(scanner.scan(a_, b) for a_, b in ranges)
+        say(f"  新しく帳簿に足した裁定 {added:,}件")
+        since = int(time.time() - hours * 3600)
+        read = scanner.sample(since, actors_n=a.get("sample_actors", 15), per_actor=a.get("sample_per_actor", 20))
+        if read:
+            say(f"  上位の主体の受領書を {read}件読んだ(財布・ガス代・優先レーン)")
+        for line in arbs.describe(arbs.summarize(conn, chain_name, since), chain=chain_name, hours=hours, top=top,
+                                  swaps=scanner.swaps_seen, txs=scanner.txs_seen):
+            say(line)
+        return 0
+    except RpcError as e:
+        say(f"エラー: {e}(読み終えた所までは残っている。もう一度動かすと続きから読む)")
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()
