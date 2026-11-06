@@ -187,6 +187,34 @@ def test_parse_swap_signs():
                             "topics": [V2], "data": "0x" + word(1) * 6}) is None
 
 
+def test_windows_and_routes(conn):
+    """直前の交換から何ブロック後に取られたか(その間、同じ機会が開いていた)と、経路ごとの粗利と取り手。"""
+    arbs.ensure_schema(conn)
+
+    def add(tx, block, actor, pools, path, usd, trigger):
+        conn.execute("""INSERT INTO chain_arbs(chain, tx_hash, block, ts, actor, swaps, kinds, pools, path,
+                            profit_token, profit_amount, gross_usd, trigger_block, trigger_seconds)
+                        VALUES ('hyperevm',?,?,?,?,2,'V3,V3',?,?,'0x',1,?,?,?)""",
+                     (tx, block, block, actor, pools, path, usd, trigger, None if trigger is None else block - trigger))
+
+    add("t1", 101, BOT1, f"{P1},{P2}", "WETH>USDC>WETH", 800.0, 100)       # 次のブロック
+    add("t2", 205, BOT1, f"{P2},{P1}", "USDC>WETH>USDC", 100.0, 202)       # 同じ経路(向きが逆)・3ブロック後
+    add("t3", 300, BOT2, f"{P1},{P2}", "WETH>USDC>WETH", 100.0, 300)       # 同じ経路・同じブロック
+    add("t4", 400, BOT2, f"{P3},{P4},{P1}", "WETH>WBTC>USDC>WETH", 50.0, None)
+    s = arbs.summarize(conn, "hyperevm", 0)
+    assert s["windows"]["同じブロック"] == [1, 100.0] and s["windows"]["次のブロック"] == [1, 800.0]
+    assert s["windows"]["2〜5ブロック後"] == [1, 100.0] and s["windows"]["直前の交換が読んだ範囲に無い"] == [1, 50.0]
+    r1, r2 = s["routes"]
+    assert (r1["tokens"], r1["pools"], r1["count"], r1["gross_usd"], r1["actors"]) == (["WETH", "USDC"], 2, 3, 1000.0, 2)
+    assert r1["lead"] == (BOT1, 900.0) and r1["quick_usd"] == 900.0 and r1["median_blocks"] == 1
+    assert r2["median_blocks"] is None and r2["quick_usd"] == 0
+    text = "\n".join(arbs.describe(s, chain="hyperevm", hours=24))
+    assert ("同じブロック 1件($100.00・10%)、次のブロック 1件($800.00・76%)、2〜5ブロック後 1件($100.00・10%)、"
+            "直前の交換が読んだ範囲に無い 1件($50.00・5%)") in text
+    assert (f"1. WETH・USDC(交換の場 2)  3件  $1,000.00  主体 2(1位 {BOT1} 90%)  次のブロックまでに取られた粗利 90%  "
+            "遅れの中央値 1ブロック") in text
+
+
 def test_arb_scan_command_prints_the_table(conn):
     node, _ = setup()
     lines: list[str] = []
