@@ -7,8 +7,10 @@ from tests.test_onchain_arbs import setup
 def test_survey_runs_each_tool_and_skips_a_broken_chain(conn):
     node, _ = setup()
     node.add_liquidation(6_000)                            # Aave の清算 1件(50ドル − ガス代)
+    made: list[str] = []
 
     def factory(name):
+        made.append(name)
         if name == "broken":
             raise ConnectionError("つながらない")
         return make_chain(node)
@@ -16,10 +18,18 @@ def test_survey_runs_each_tool_and_skips_a_broken_chain(conn):
     lines: list[str] = []
     assert scan_command.run_survey(["arbitrum", "broken"], days=1, hours=7, top=3, conn=conn,
                                    out=lines.append, chain_factory=factory) == 0
+    assert made == ["arbitrum", "broken"]                  # 1チェーンの3つの道具は、同じ読み手を使う
     text = "\n".join(lines)
     assert "===== 1/2 arbitrum =====" in text and "===== 2/2 broken =====" in text
-    assert "broken の裁定は読めなかった(ConnectionError: つながらない)" in text
+    assert "broken は読めなかった(ConnectionError: つながらない)" in text
     summary = text.split("===== まとめ")[1]
     assert "arbitrum:  Aave の清算 1件・1主体・純利益 $49.97、1位 100%" in summary
     assert "清算の仕組み 1か所・1件" in summary and "裁定 4件・3主体・粗利 $45.00、1位 89%" in summary
+    assert "読めなかった:" not in summary.split("broken")[0]
     assert "broken:  読めなかった" in summary
+
+
+def test_overview_names_the_tools_that_failed():
+    s = {"actors": [{"net_usd": 10.0, "count": 2}], "failed": ["清算の地図", "裁定"]}
+    assert scan_command.overview_line("polygon", s) == \
+        "  polygon:  Aave の清算 2件・1主体・純利益 $10.00、1位 100% / 読めなかった: 清算の地図・裁定"

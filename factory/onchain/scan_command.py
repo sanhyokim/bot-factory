@@ -340,15 +340,22 @@ def overview_line(chain_name: str, s: dict) -> str:
         trig = sum(x["with_trigger"] for x in acts)
         parts.append(f"裁定 {r['count']:,}件・{len(acts)}主体・粗利 ${r['gross_usd']:,.2f}{lead}"
                      + (f"、直前の交換と同じブロック {same / trig:.0%}" if trig else ""))
+    failed = s.get("failed", [])
     if len(parts) == 1:
         parts.append("読めなかった")
+    elif failed:
+        parts.append("読めなかった: " + "・".join(failed))
     return f"  {parts[0]}  " + " / ".join(parts[1:])
 
 
 def run_survey(chains: list[str] | None = None, days: float = 7, hours: float = 1, top: int = 5, *,
                conn=None, out: Callable[[str], None] | None = None, chain_factory=None) -> int:
     """python -m factory chain-survey: チェーンごとに、Aave の清算(actor-scan)・清算の地図(venue-scan)・
-    裁定(arb-scan)を順に動かし、最後に1チェーン1行でまとめる。1つのチェーンで失敗しても、次のチェーンへ進む。"""
+    裁定(arb-scan)を順に動かし、最後に1チェーン1行でまとめる。1つのチェーンで失敗しても、次のチェーンへ進む。
+    1つのチェーンの3つの道具は、同じ読み手(中継)を使う。接続先について分かったこと(ログの範囲の上限など)を
+    次の道具に持ち越し、チェーンごとに画面に出す。"""
+    from .check import endpoint_notes
+
     own = conn is None
     conn = conn or db.connect()
     say = out or print
@@ -359,13 +366,33 @@ def run_survey(chains: list[str] | None = None, days: float = 7, hours: float = 
             say(f"===== {i}/{len(names)} {name} =====")
             s: dict = {}
             results[name] = s
-            for step, fn, span in (("Aave の清算", run, days), ("清算の地図", run_venues, days),
-                                   ("裁定", run_arbs, hours)):
-                try:
-                    chain = chain_factory(name) if chain_factory else None
-                    fn(name, span, top, chain=chain, conn=conn, out=say, summary_out=s)
-                except Exception as e:  # noqa: BLE001  1つのチェーン・1つの道具の失敗で、ほかを止めない
-                    say(f"  {name} の{step}は読めなかった({type(e).__name__}: {str(e)[:120]})")
+            cache = None
+            try:
+                if chain_factory:
+                    chain = chain_factory(name)
+                else:
+                    cache = ChainCache()
+                    chain = Chain.from_config(name, cache=cache, usage_conn=conn)
+            except Exception as e:  # noqa: BLE001  1つのチェーンの失敗で、ほかを止めない
+                say(f"  {name} は読めなかった({type(e).__name__}: {str(e)[:120]})")
+                continue
+            try:
+                for step, fn, span in (("Aave の清算", run, days), ("清算の地図", run_venues, days),
+                                       ("裁定", run_arbs, hours)):
+                    try:
+                        if fn(name, span, top, chain=chain, conn=conn, out=say, summary_out=s):
+                            s.setdefault("failed", []).append(step)
+                    except Exception as e:  # noqa: BLE001  1つの道具の失敗で、ほかを止めない
+                        s.setdefault("failed", []).append(step)
+                        say(f"  {name} の{step}は読めなかった({type(e).__name__}: {str(e)[:120]})")
+                notes = endpoint_notes(chain.relay, indent="  ")
+                if notes:
+                    say(f"{name} の接続先について分かったこと")
+                    for line in notes:
+                        say(line)
+            finally:
+                if cache is not None:
+                    cache.close()
         say(f"===== まとめ(清算は直近{days:g}日、裁定は直近{hours:g}時間) =====")
         for name in names:
             say(overview_line(name, results[name]))

@@ -100,27 +100,37 @@ def run(chain_name: str = "arbitrum", hours: float = 24, *, client: httpx.Client
     finally:
         relay.flush()
 
-    narrow = [ep for ep in relay.endpoints if ep.log_limit]
-    if narrow:
-        out("ログの範囲で断られた接続先(ログを読む時だけ外した)")
-        for ep in narrow:
-            out(f"  {_short(ep.url)}: 断られた言い方「{ep.log_note}」→ ログは{ep.log_limit:,}ブロック以下の時だけ使う")
-    used_up = [ep for ep in relay.endpoints if ep.quota_note]
-    if used_up:
-        out(f"使える量を使い切ったと言われた接続先({relay.cooldown_quota / 60:g}分休ませた)")
-        for ep in used_up:
-            out(f"  {_short(ep.url)}: 「{ep.quota_note}」")
-    skipped = [(ep, kind) for ep in relay.endpoints for kind in ep.block_notes]
-    if skipped:
-        out(f"同じ読み方を{relay.skip_after}回続けて断った接続先(その読み方の時だけ{relay.skip_seconds / 60:g}分外した)")
-        for ep, kind in skipped:
-            out(f"  {_short(ep.url)}: {kind_name(kind)}「{ep.block_notes[kind]}」")
+    for line in endpoint_notes(relay):
+        out(line)
     out("接続先ごとに使った回数(呼んだ/失敗/断られた/キャッシュ)")
     for (endpoint, purpose), c in sorted(relay.totals.items()):
         name = endpoint if endpoint == "cache" else _short(endpoint)
         out(f"  {name}({PURPOSE_NAMES[purpose]}): {c['calls']}/{c['errors']}/{c['rate_limited']}/{c['cache_hits']}")
     out("結果: OK" if ok else "結果: 問題あり(上のエラーを見てください)")
     return ok
+
+
+def endpoint_notes(relay: Relay, indent: str = "") -> list[str]:
+    """中継が接続先について分かったこと(ログの範囲の上限・使い切り・外した読み方)。chain-survey でも使う。"""
+    lines: list[str] = []
+    narrow = [ep for ep in relay.endpoints if ep.log_limit]
+    if narrow:
+        lines.append(f"{indent}ログの範囲で断られた接続先(ログを読む時だけ外した)")
+        for ep in narrow:
+            lines.append(f"{indent}  {_short(ep.url)}: 断られた言い方「{ep.log_note}」"
+                         f"→ ログは{ep.log_limit:,}ブロック以下の時だけ使う")
+    used_up = [ep for ep in relay.endpoints if ep.quota_note]
+    if used_up:
+        lines.append(f"{indent}使える量を使い切ったと言われた接続先({relay.cooldown_quota / 60:g}分休ませた)")
+        for ep in used_up:
+            lines.append(f"{indent}  {_short(ep.url)}: 「{ep.quota_note}」")
+    skipped = [(ep, kind) for ep in relay.endpoints for kind in ep.block_notes]
+    if skipped:
+        lines.append(f"{indent}同じ読み方を{relay.skip_after}回続けて断った接続先"
+                     f"(その読み方の時だけ{relay.skip_seconds / 60:g}分外した)")
+        for ep, kind in skipped:
+            lines.append(f"{indent}  {_short(ep.url)}: {kind_name(kind)}「{ep.block_notes[kind]}」")
+    return lines
 
 
 def _network_calls(relay: Relay) -> int:

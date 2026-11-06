@@ -373,6 +373,43 @@ def _size(usd: float) -> str:
     return next(name for limit, name in SIZES if usd < limit)
 
 
+# 直前の交換から取られるまでのブロック数。その間、経路の交換の場は動いていないので、同じ機会がその長さだけ開いていた
+WINDOWS = ((0, "同じブロック"), (1, "次のブロック"), (5, "2〜5ブロック後"), (float("inf"), "6ブロック以上後"))
+NO_TRIGGER = "直前の交換が読んだ範囲に無い"
+
+
+def _window(r) -> str:
+    if r["trigger_block"] is None:
+        return NO_TRIGGER
+    return next(name for limit, name in WINDOWS if r["block"] - r["trigger_block"] <= limit)
+
+
+def _routes(rows: list) -> list[dict]:
+    """同じ交換の場の組(経路)ごとのまとめ。粗利の多い順。"""
+    by: dict[tuple, list] = defaultdict(list)
+    for r in rows:
+        by[tuple(sorted(set(r["pools"].split(","))))].append(r)
+    out = []
+    for pools, rs in by.items():
+        priced = [r for r in rs if r["gross_usd"] is not None]
+        gross = sum(r["gross_usd"] for r in priced)
+        who: Counter = Counter()
+        for r in priced:
+            who[r["actor"]] += r["gross_usd"]
+        trig = [r for r in rs if r["trigger_block"] is not None]
+        quick = sum(r["gross_usd"] for r in priced if r["trigger_block"] is not None
+                    and r["block"] - r["trigger_block"] <= 1)
+        path = Counter(r["path"] for r in rs).most_common(1)[0][0]
+        out.append({
+            "tokens": list(dict.fromkeys(path.split(">"))), "pools": len(pools), "count": len(rs), "gross_usd": gross,
+            "actors": len({r["actor"] for r in rs}), "lead": who.most_common(1)[0] if who else None,
+            "quick_usd": quick,
+            "median_blocks": statistics.median(r["block"] - r["trigger_block"] for r in trig) if trig else None,
+        })
+    out.sort(key=lambda v: v["gross_usd"], reverse=True)
+    return out
+
+
 def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> dict:
     ensure_schema(conn)
     rows = conn.execute("SELECT * FROM chain_arbs WHERE chain = ? AND ts >= ? ORDER BY block",
@@ -412,7 +449,13 @@ def summarize(conn: sqlite3.Connection, chain: str, since_ts: int) -> dict:
         if r["gross_usd"] is not None:
             sizes[_size(r["gross_usd"])].append(r["gross_usd"])
     big = sorted((r for r in rows if r["gross_usd"] is not None), key=lambda r: r["gross_usd"], reverse=True)
+    windows: dict[str, list] = {name: [0, 0.0] for name in [n for _, n in WINDOWS] + [NO_TRIGGER]}
+    for r in rows:
+        w = windows[_window(r)]
+        w[0] += 1
+        w[1] += r["gross_usd"] or 0.0
     return {"actors": out, "count": len(rows), "gross_usd": total, "sizes": sizes, "biggest": big[:10],
+            "windows": windows, "routes": _routes(rows),
             "first_ts": rows[0]["ts"] if rows else None, "last_ts": rows[-1]["ts"] if rows else None}
 
 
@@ -452,6 +495,18 @@ def describe(s: dict, *, chain: str, hours: float, top: int = 15, swaps: int = 0
         rest = s["actors"][top:]
         out.append(f"  ほか {len(rest)}主体(件数 {sum(v['count'] for v in rest):,}件、"
                    f"粗利 ${sum(v['gross_usd'] for v in rest):,.2f})")
+    if s["gross_usd"] > 0:
+        out.append("  直前の交換から取られるまで(その間、同じ機会が開いていた。粗利の内訳): "
+                   + "、".join(f"{name} {n:,}件(${usd:,.2f}・{usd / s['gross_usd']:.0%})"
+                              for name, (n, usd) in s["windows"].items() if n))
+    out.append("  粗利の多い経路(同じ交換の場の組):")
+    for i, v in enumerate(s["routes"][:8], 1):
+        lead = (f"1位 {v['lead'][0] or '不明'} {v['lead'][1] / v['gross_usd']:.0%}"
+                if v["lead"] and v["gross_usd"] > 0 else "1位 -")
+        quick = f"{v['quick_usd'] / v['gross_usd']:.0%}" if v["gross_usd"] > 0 else "-"
+        med = f"{v['median_blocks']:g}ブロック" if v["median_blocks"] is not None else "-"
+        out.append(f"  {i:>3}. {'・'.join(v['tokens'])}(交換の場 {v['pools']})  {v['count']:,}件  ${v['gross_usd']:,.2f}  "
+                   f"主体 {v['actors']}({lead})  次のブロックまでに取られた粗利 {quick}  遅れの中央値 {med}")
     out.append("  粗利の大きい裁定:")
     for r in s["biggest"]:
         delay = (f"直前の交換から {r['block'] - r['trigger_block']:,}ブロック・{r['trigger_seconds']:,}秒"
