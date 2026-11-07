@@ -80,6 +80,7 @@ class FakeNode:
         self.head = head
         self.t0 = int(time.time()) - head // 4              # 1ブロック0.25秒で、最新のブロックが今
         self.calls: list[tuple[str, str]] = []           # (URL, 呼び方)
+        self.bodies: list[dict] = []                       # 届いた呼び出しそのもの(引数を確かめる時に)
         self.mode: dict[str, str] = {}                     # URL → ok / rate / down / timeout / http500 / archive
         self.max_range: dict[str, int] = {}                # URL → eth_getLogs で読める最大ブロック数
         self.logs: list[dict] = []
@@ -105,6 +106,7 @@ class FakeNode:
         body = json.loads(request.content)
         for b in body if isinstance(body, list) else [body]:
             self.calls.append((url, b["method"]))
+            self.bodies.append(b)
         mode = self.mode.get(url, "ok")
         if mode == "down":
             raise httpx.ConnectError("つながらない", request=request)
@@ -200,9 +202,10 @@ class FakeNode:
                 return err(-32602, f"exceed maximum block range: {limit}")
             t0 = (p[0].get("topics") or [None])[0]
             t0 = None if t0 is None else set(t0) if isinstance(t0, list) else {t0}    # 並べたら「どれか」
-            want = (p[0].get("address") or "").lower()
+            want = p[0].get("address") or []
+            want = {a.lower() for a in ([want] if isinstance(want, str) else want)}     # 並べたら「どれか」
             return ok([lg for lg in self.logs if lo <= int(lg["blockNumber"], 16) <= hi
-                       and (t0 is None or lg["topics"][0] in t0) and (not want or lg["address"].lower() == want)])
+                       and (t0 is None or lg["topics"][0] in t0) and (not want or lg["address"].lower() in want)])
         return err(-32601, "method not found")
 
     def sub_answer(self, target: str, data: str, block: int) -> tuple[bool, str]:

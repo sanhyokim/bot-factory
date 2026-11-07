@@ -336,17 +336,21 @@ class ArbScanner:
 
     # --- 上位の主体の受領書 ---
     def sample(self, since_ts: int, *, actors_n: int = 15, per_actor: int = 20) -> int:
-        """粗利の多い主体ごとに、粗利の大きい裁定の受領書を読んで、財布・ガス代・優先レーンを確かめる。"""
+        """粗利の多い主体ごとに、粗利の大きい裁定の受領書を読んで、財布・ガス代・優先レーンを確かめる。
+        毎回、その時の粗利の大きい per_actor 件を選び、まだ読んでいない分だけ読む(後から大きい裁定が入っても、
+        前に読んだ小さい裁定で数が埋まって読まない、ということが無いように)。"""
         top = [a for (a,) in self.conn.execute(
             """SELECT actor FROM chain_arbs WHERE chain = ? AND ts >= ? GROUP BY actor
                ORDER BY SUM(COALESCE(gross_usd, 0)) DESC LIMIT ?""", (self.chain.name, since_ts, actors_n))]
         read = 0
         for a in top:
             rows = self.conn.execute(
-                """SELECT tx_hash, block FROM chain_arbs WHERE chain = ? AND actor = ? AND ts >= ? AND sampled = 0
+                """SELECT tx_hash, block, sampled FROM chain_arbs WHERE chain = ? AND actor = ? AND ts >= ?
                    ORDER BY COALESCE(gross_usd, 0) DESC LIMIT ?""",
-                (self.chain.name, a, since_ts, max(0, per_actor - self._sampled(a, since_ts)))).fetchall()
-            for tx, block in rows:
+                (self.chain.name, a, since_ts, per_actor)).fetchall()
+            for tx, block, done in rows:
+                if done:
+                    continue
                 rc = self.chain.receipt(tx, purpose=self.purpose) or {}
                 eth = self.price(self.scanner.weth, block)
                 gas_wei = to_int(rc.get("gasUsed", "0x0")) * to_int(rc.get("effectiveGasPrice") or "0x0")
@@ -359,10 +363,6 @@ class ArbScanner:
                 read += 1
             self.conn.commit()
         return read
-
-    def _sampled(self, actor: str, since_ts: int) -> int:
-        return self.conn.execute("SELECT COUNT(*) FROM chain_arbs WHERE chain = ? AND actor = ? AND ts >= ? "
-                                 "AND sampled = 1", (self.chain.name, actor, since_ts)).fetchone()[0]
 
 
 # --- まとめ ---
@@ -481,7 +481,7 @@ def describe(s: dict, *, chain: str, hours: float, top: int = 15, swaps: int = 0
     out.append("  1件の粗利の大きさ: " + "、".join(f"{name} {len(v):,}件(${sum(v):,.2f})"
                                           for name, v in s["sizes"].items() if v))
     out.append("  順位 主体 件数 粗利 増えたトークン 交換の場 交換の数(中央値) 直前の交換と同じブロック "
-               "遅れの中央値 | 受領書を読んだ分(粗利の大きい順): 財布 ガス代(1件の平均) 純利益(粗利−ガス代、"
+               "遅れの中央値 | 受領書を読んだ分(粗利の大きい裁定から読む): 財布 ガス代(1件の平均) 純利益(粗利−ガス代、"
                "ガス代が粗利に占める割合) 優先レーン 取引の順番(中央値)")
     for i, v in enumerate(s["actors"][:top], 1):
         kinds = "・".join(f"{k}×{n}" for k, n in v["kinds"].most_common(3))

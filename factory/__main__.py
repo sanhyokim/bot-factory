@@ -80,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
     vs.add_argument("--chain", default="arbitrum")
     vs.add_argument("--days", type=float, default=7, help="さかのぼる日数")
     vs.add_argument("--top", type=int, default=25, help="表に出す仕組みの数")
+    vs.add_argument("--known", action="store_true",
+                    help="config.yaml の compound_comptrollers に書いた仕組み(Venus・Benqi など)だけを、"
+                         "市場の住所を決めて読む(住所を決めない読み方を断る接続先向け)")
 
     lt = sub.add_parser("liq-timing", help="過去の清算ごとに、清算できるようになってから何秒で取られたかと、"
                                            "その理由(値段か利息か)を測る(読み取りだけ。第0期)")
@@ -92,6 +95,12 @@ def main(argv: list[str] | None = None) -> int:
     cs.add_argument("--chain", default="arbitrum")
     cs.add_argument("--days", type=float, default=7, help="さかのぼる日数(venue-scan で読んだ清算のうち)")
     cs.add_argument("--top", type=int, default=5, help="仕組みごとに出す、遅く取られた清算の数")
+
+    st = sub.add_parser("stranded-scan", help="古い Compound の写しで、今清算できるのに誰も取っていない借り手を探す"
+                                              "(取り残し。読み取りだけ。第0期)")
+    st.add_argument("--chain", default="arbitrum")
+    st.add_argument("--days", type=float, default=180, help="借りた記録をさかのぼる日数")
+    st.add_argument("--top", type=int, default=20, help="表に出す借り手の数")
 
     sv = sub.add_parser("chain-survey", help="Arbitrum 以外のチェーン(config.yaml)ごとに、Aave の清算・清算の地図・裁定を"
                                              "順に読み、最後に1チェーン1行でまとめる(読み取りだけ。第0期)")
@@ -166,7 +175,10 @@ def main(argv: list[str] | None = None) -> int:
         return scan_command.run_watch(args.chain, every=args.every)
     if args.cmd == "venue-scan":
         from .onchain import scan_command
-        return scan_command.run_venues(args.chain, args.days, args.top)
+        return scan_command.run_venues(args.chain, args.days, args.top, known=args.known)
+    if args.cmd == "stranded-scan":
+        from .onchain import scan_command
+        return scan_command.run_stranded(args.chain, args.days, args.top)
     if args.cmd == "chain-survey":
         from .onchain import scan_command
         chains = [c.strip() for c in args.chains.split(",") if c.strip()] or None

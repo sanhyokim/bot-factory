@@ -208,6 +208,9 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
         aave_v3_pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
         weth: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"           # ガス代は AVAX(WAVAX の値段で読む)
         multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+      # venue-scan --known で、市場の住所を決めて読む Compound の写し(2026-11-07、docs.benqi.fi の Core Markets から写した)
+      compound_comptrollers:
+        Benqi: "0x486Af39519B4Dc9a7fCcd318217352830E8AD9b4"
     gnosis:
       chain_id: 100
       block_seconds: 5
@@ -269,3 +272,6 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
         aave_v3_pool: "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
         weth: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"           # ガス代は BNB(WBNB の値段で読む)
         multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
+      # venue-scan --known で、市場の住所を決めて読む Compound の写し(2026-11-07、docs-v4.venus.io の Core Pool から写した)
+      compound_comptrollers:
+        Venus: "0xfD36E2c2a6789Db23113685031d7F16329158384"

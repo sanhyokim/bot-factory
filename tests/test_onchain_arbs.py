@@ -150,6 +150,10 @@ def test_samples_receipts_of_top_actors(conn):
     assert a3["sampled"] == 1 and a3["sender"] == "0x" + "e9" * 20 and a3["tx_index"] == 7
     assert a3["gas_usd"] == pytest.approx(0.03) and a3["timeboosted"] == 0
     assert rows(conn)[tx["a1"]]["sampled"] == 0
+    # 後から粗利の大きい裁定が入ったら、前に読んだ小さい裁定で数が埋まっていても、それを読む
+    conn.execute("UPDATE chain_arbs SET gross_usd = 999 WHERE tx_hash = ?", (tx["a1"],))
+    assert sc.sample(0, actors_n=2, per_actor=1) == 1
+    assert rows(conn)[tx["a1"]]["sampled"] == 1
 
 
 def test_summary_by_actor(conn):

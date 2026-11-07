@@ -57,6 +57,16 @@ def encode_call(signature: str, *args: int | str | bool) -> str:
     return "0x" + "".join(out)
 
 
+def decode_addresses(data: str) -> list[str]:
+    """address[] の答え(getAllMarkets() など)を住所の並びに。"""
+    w = words(data)
+    if not w:
+        return []
+    off = w[0] // 32
+    n = w[off] if len(w) > off else 0
+    return [address(f"0x{x:064x}") for x in w[off + 1:off + 1 + n]]
+
+
 def decode_string(data: str) -> str:
     """文字の答え(symbol() など)を読む。古い仕組みの32バイト固定の形にも合わせる。"""
     h = data[2:] if data.startswith(("0x", "0X")) else data
