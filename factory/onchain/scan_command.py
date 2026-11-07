@@ -288,6 +288,55 @@ def run_compound(chain_name: str = "arbitrum", days: float = 7, top: int = 5, *,
             conn.close()
 
 
+def run_stranded(chain_name: str = "arbitrum", days: float = 180, top: int = 20, *, chain: Chain | None = None,
+                 conn=None, out: Callable[[str], None] | None = None) -> int:
+    """python -m factory stranded-scan: 古い Compound の写しで、今清算できるのに誰も取っていない借り手を探す
+    (取り残し)。仕組みは清算の地図(venue-scan)と config.yaml の compound_comptrollers から取る。"""
+    from . import stranded
+
+    own = conn is None
+    conn = conn or db.connect()
+    cache = ChainCache() if chain is None else None
+    chain = chain or Chain.from_config(chain_name, cache=cache, usage_conn=conn)
+    lines: list[str] = []
+
+    def say(text: str) -> None:
+        lines.append(text)
+        (out or print)(text)
+
+    try:
+        cfg = config.load_config()["onchain"]["chains"][chain_name]
+        block_seconds = chain.block_time(cfg.get("block_seconds", 0.25))
+        safe = chain.safe_head()
+        start = max(0, safe - int(days * 86400 / block_seconds) + 1)
+        finder = stranded.Finder.from_config(conn, chain, out=say)
+        places = finder.places(stranded.load_known(chain_name))
+        if not places:
+            say(f"{chain_name} に調べる Compound の写しが無い(先に venue-scan で清算の地図を作るか、"
+                "config.yaml の compound_comptrollers に書く)")
+            return 1
+        say(f"取り残しを探す: Compound の写し {len(places)}か所。借りた記録はブロック {start:,}〜{safe:,}"
+            f"(直近{days:g}日)")
+        totals = finder.run(places, from_block=start, to_block=safe)
+        say(f"  新しく帳簿に足した借り手 {totals['added']:,}人")
+        for line in stranded.describe(stranded.summarize(conn, chain_name), totals, chain=chain_name, days=days,
+                                      top=top):
+            say(line)
+        return 0
+    except RpcError as e:
+        say(f"エラー: {e}(読み終えた所までは残っている。もう一度動かすと続きから読む)")
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    finally:
+        chain.relay.flush()
+        if lines:
+            logs.write(PROCESS, "\n".join(lines), stage="主体の分析")
+        if cache is not None:
+            cache.close()
+        if own:
+            conn.close()
+
+
 def run_arbs(chain_name: str = "arbitrum", hours: float = 2, top: int = 15, *, chain: Chain | None = None,
              conn=None, out: Callable[[str], None] | None = None,
              summary_out: dict | None = None) -> int:

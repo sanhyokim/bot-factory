@@ -96,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
     cs.add_argument("--days", type=float, default=7, help="さかのぼる日数(venue-scan で読んだ清算のうち)")
     cs.add_argument("--top", type=int, default=5, help="仕組みごとに出す、遅く取られた清算の数")
 
+    st = sub.add_parser("stranded-scan", help="古い Compound の写しで、今清算できるのに誰も取っていない借り手を探す"
+                                              "(取り残し。読み取りだけ。第0期)")
+    st.add_argument("--chain", default="arbitrum")
+    st.add_argument("--days", type=float, default=180, help="借りた記録をさかのぼる日数")
+    st.add_argument("--top", type=int, default=20, help="表に出す借り手の数")
+
     sv = sub.add_parser("chain-survey", help="Arbitrum 以外のチェーン(config.yaml)ごとに、Aave の清算・清算の地図・裁定を"
                                              "順に読み、最後に1チェーン1行でまとめる(読み取りだけ。第0期)")
     sv.add_argument("--chains", default="", help="カンマ区切りのチェーンの名前(既定は config.yaml の Arbitrum 以外すべて)")
@@ -170,6 +176,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "venue-scan":
         from .onchain import scan_command
         return scan_command.run_venues(args.chain, args.days, args.top, known=args.known)
+    if args.cmd == "stranded-scan":
+        from .onchain import scan_command
+        return scan_command.run_stranded(args.chain, args.days, args.top)
     if args.cmd == "chain-survey":
         from .onchain import scan_command
         chains = [c.strip() for c in args.chains.split(",") if c.strip()] or None
