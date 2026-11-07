@@ -23,7 +23,15 @@ from datetime import datetime
 
 from ..models import JST
 from . import actors
-from .abi import address, decode_string, encode_call, to_int, topic, words
+from .abi import (
+    address,
+    decode_addresses,
+    decode_string,
+    encode_call,
+    to_int,
+    topic,
+    words,
+)
 from .chain import Chain
 from .rpc import CallReverted
 
@@ -53,9 +61,15 @@ FAMILIES = (
     Family("Silo v1 ほか", "Liquidate(address,address,uint256,uint256)", None, ("topic", 2)),
 )
 BY_TOPIC = {f.topic0: f for f in FAMILIES}
+FAMILY_BY_NAME = {f.name: f for f in FAMILIES}
 # 読み終えた範囲の名前。記録の形を足したら名前が変わり、最初から読み直す
 SCAN_KEY = "venues_" + hashlib.sha256("".join(sorted(BY_TOPIC)).encode()).hexdigest()[:8]
 COMPTROLLER = "Compound型"
+
+
+def known_key(comptroller: str) -> str:
+    """住所を決めて読む時の、読み終えた範囲の名前(仕組みごと。住所を決めない読み方の範囲とは別に数える)。"""
+    return f"{SCAN_KEY}@{comptroller.lower()}"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS chain_venue_events (
@@ -142,22 +156,35 @@ class Mapper:
         self.conn.commit()
         return venue, symbol
 
-    def scan(self, from_block: int, to_block: int) -> int:
-        """範囲の清算の記録を、住所を決めずに読む。新しく帳簿に足した件数を返す。"""
+    def markets(self, comptroller: str) -> list[str]:
+        """Compound の写しの、まとめる仕組みに入っている市場の一覧(今のブロックの getAllMarkets())。"""
+        got = self._call(comptroller, "getAllMarkets()")
+        try:
+            return decode_addresses(got) if got and got != "0x" else []
+        except ValueError:
+            return []
+
+    def scan(self, from_block: int, to_block: int, *, markets: list[str] | None = None,
+             key: str = SCAN_KEY) -> int:
+        """範囲の清算の記録を、住所を決めずに読む。新しく帳簿に足した件数を返す。
+        markets を渡すと、その市場の Compound 型の清算の記録だけを、住所を決めて読む(住所を決めない読み方を
+        断る接続先でも読める)。読み終えた範囲は key の名前で残す。"""
         added = 0
+        topics = [[FAMILY_BY_NAME[COMPTROLLER].topic0]] if markets else [list(BY_TOPIC)]
         start = from_block
         windows = max(1, -(-(to_block - from_block + 1) // actors.WINDOW_BLOCKS))
         done = 0
         while start <= to_block:
             end = min(to_block, start + actors.WINDOW_BLOCKS - 1)
-            logs = self.chain.logs(from_block=start, to_block=end, topics=[list(BY_TOPIC)], purpose=self.purpose)
+            logs = self.chain.logs(from_block=start, to_block=end, address=markets or None, topics=topics,
+                                   purpose=self.purpose)
             added += self._record(logs)
-            actors.mark_progress(self.conn, self.chain.name, SCAN_KEY, from_block, end)
+            actors.mark_progress(self.conn, self.chain.name, key, from_block, end)
             done += 1
             if done % 10 == 0 and done < windows:
                 self.out(f"  {done}/{windows} 区切りを読んだ(ブロック {end:,} まで、新しい記録 {added}件)")
             start = end + 1
-        actors.finish_progress(self.conn, self.chain.name, SCAN_KEY, from_block)
+        actors.finish_progress(self.conn, self.chain.name, key, from_block)
         return added
 
     def _record(self, logs: list[dict]) -> int:

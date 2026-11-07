@@ -30,6 +30,7 @@ from ..models import JST, now_jst
 from . import actors, venues
 from .abi import (
     address,
+    decode_addresses,
     decode_aggregate3,
     encode_aggregate3,
     encode_call,
@@ -95,16 +96,6 @@ CREATE TABLE IF NOT EXISTS chain_compound_liquidations (
 def ensure_schema(conn: sqlite3.Connection) -> None:
     venues.ensure_schema(conn)
     conn.executescript(SCHEMA)
-
-
-def _addresses(data: str) -> list[str]:
-    """address[] の答えを住所の並びに。"""
-    w = words(data)
-    if not w:
-        return []
-    off = w[0] // 32
-    n = w[off] if len(w) > off else 0
-    return [address(f"0x{x:064x}") for x in w[off + 1:off + 1 + n]]
 
 
 class Reader:
@@ -231,7 +222,7 @@ class Reader:
             got = self._call(ctrl, encode_call(sig, user), block)
             if got and got != "0x":
                 try:
-                    seen += [m for m in _addresses(got) if m not in seen]
+                    seen += [m for m in decode_addresses(got) if m not in seen]
                 except ValueError:
                     continue
         return seen

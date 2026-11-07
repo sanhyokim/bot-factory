@@ -1,4 +1,7 @@
 """清算の地図: 住所を決めずに清算の記録を読み、仕組みごとに件数・主体・1位の取り分を出す。"""
+import copy
+
+from factory import config
 from factory.onchain import scan_command, venues
 from tests.fakes_chain import LIQUIDATOR, POOL, USDC, WETH, FakeNode, word
 from tests.test_onchain_actors import make_chain
@@ -83,3 +86,45 @@ def test_venue_scan_command_prints_the_map(conn):
 def test_scan_key_changes_when_families_change():
     assert venues.SCAN_KEY.startswith("venues_") and len(venues.SCAN_KEY) == 15
     assert len(venues.BY_TOPIC) == len(venues.FAMILIES)    # 形の topic が重ならない
+
+
+def markets_answer(*markets):
+    return lambda data, block: "0x" + word(32) + word(len(markets)) + "".join(word(int(m, 16)) for m in markets)
+
+
+def test_known_markets_are_read_by_address(conn):
+    """住所を決めない読み方を断る接続先でも、Compound の写しの市場を住所で決めれば読める。"""
+    node = setup()
+    node.handlers[(COMPTROLLER, "getAllMarkets()")] = markets_answer(CUSDC, CWETH)
+    mapper = venues.Mapper(conn, make_chain(node), out=lambda s: None)
+    assert mapper.markets(COMPTROLLER) == [CUSDC, CWETH]
+    key = venues.known_key(COMPTROLLER)
+    assert mapper.scan(1, 190_000, markets=[CUSDC, CWETH], key=key) == 2     # Compound 型の2件だけ
+    flt = [b["params"][0] for b in node.bodies if b["method"] == "eth_getLogs"]
+    assert flt and all(f["address"] == [CUSDC, CWETH] for f in flt)
+    assert all(f["topics"] == [[venues.FAMILY_BY_NAME[venues.COMPTROLLER].topic0]] for f in flt)
+    # 住所を決めない読み方の範囲とは別に数える(後で住所を決めずに読むと、残りの5件を足す)
+    assert scan_command.actors.plan(conn, "arbitrum", 1, 190_000, key=venues.SCAN_KEY) == [(1, 190_000)]
+    assert mapper.scan(1, 190_000) == 5
+
+
+def test_venue_scan_known_uses_the_config(conn, monkeypatch):
+    node = setup()
+    node.handlers[(COMPTROLLER, "getAllMarkets()")] = markets_answer(CUSDC, CWETH)
+    cfg = copy.deepcopy(config.load_config())
+    cfg["onchain"]["chains"]["arbitrum"]["compound_comptrollers"] = {"Lodestar": COMPTROLLER}
+    monkeypatch.setattr(config, "load_config", lambda *a: cfg)
+    lines: list[str] = []
+    assert scan_command.run_venues("arbitrum", 7, chain=make_chain(node), conn=conn, out=lines.append,
+                                   known=True) == 0
+    text = "\n".join(lines)
+    assert "Lodestar の清算の記録を、市場 2か所に決めて読む" in text
+    assert "新しく帳簿に足した記録 2件" in text
+    assert f"Compound型  {COMPTROLLER}(cUSDC・cWETH)  2件  2市場  1主体  1位 100%({BOT3})" in text
+
+
+def test_venue_scan_known_needs_the_config(conn):
+    lines: list[str] = []
+    assert scan_command.run_venues("arbitrum", 7, chain=make_chain(setup()), conn=conn, out=lines.append,
+                                   known=True) == 1
+    assert "compound_comptrollers)が書いていない" in "\n".join(lines)

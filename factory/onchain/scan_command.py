@@ -178,8 +178,10 @@ def run_timing(chain_name: str = "arbitrum", days: float = 7, top: int = 10, *, 
 
 def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, chain: Chain | None = None,
                conn=None, out: Callable[[str], None] | None = None,
-               summary_out: dict | None = None) -> int:
-    """python -m factory venue-scan: 清算の記録を出している仕組みを、住所を決めずにすべて探す(清算の地図)。"""
+               summary_out: dict | None = None, known: bool = False) -> int:
+    """python -m factory venue-scan: 清算の記録を出している仕組みを、住所を決めずにすべて探す(清算の地図)。
+    known=True なら、config.yaml の compound_comptrollers に書いた Compound の写しだけを、市場の住所を決めて読む
+    (無料の接続先の多くは、住所を決めないログを狭い範囲でしか返さないので)。"""
     from . import venues
 
     own = conn is None
@@ -193,15 +195,37 @@ def run_venues(chain_name: str = "arbitrum", days: float = 7, top: int = 25, *, 
         (out or print)(text)
 
     try:
-        block_seconds = chain.block_time(config.load_config()["onchain"]["chains"][chain_name].get("block_seconds", 0.25))
+        cfg = config.load_config()["onchain"]["chains"][chain_name]
+        block_seconds = chain.block_time(cfg.get("block_seconds", 0.25))
         safe = chain.safe_head()
         start = max(0, safe - int(days * 86400 / block_seconds) + 1)
-        ranges = actors.plan(conn, chain_name, start, safe, key=venues.SCAN_KEY)
-        todo = sum(b - a + 1 for a, b in ranges)
-        say(f"清算の記録を、仕組みを決めずに読む: ブロック {start:,}〜{safe:,}(まだ読んでいない {todo:,}ブロック。"
-            f"記録の形 {len(venues.FAMILIES)}種類)")
         mapper = venues.Mapper(conn, chain, out=say)
-        added = sum(mapper.scan(a, b) for a, b in ranges)
+        if known:
+            places = cfg.get("compound_comptrollers") or {}
+            if not places:
+                say(f"config.yaml の {chain_name} に、住所を決めて読む仕組み(compound_comptrollers)が書いていない")
+                return 1
+            added, read_any = 0, False
+            for name, ctrl in places.items():
+                markets = mapper.markets(ctrl)
+                if not markets:
+                    say(f"{name}({ctrl})の市場の一覧(getAllMarkets())が読めなかった")
+                    continue
+                key = venues.known_key(ctrl)
+                ranges = actors.plan(conn, chain_name, start, safe, key=key)
+                todo = sum(b - a + 1 for a, b in ranges)
+                say(f"{name} の清算の記録を、市場 {len(markets)}か所に決めて読む: ブロック {start:,}〜{safe:,}"
+                    f"(まだ読んでいない {todo:,}ブロック)")
+                added += sum(mapper.scan(a, b, markets=markets, key=key) for a, b in ranges)
+                read_any = True
+            if not read_any:
+                return 1
+        else:
+            ranges = actors.plan(conn, chain_name, start, safe, key=venues.SCAN_KEY)
+            todo = sum(b - a + 1 for a, b in ranges)
+            say(f"清算の記録を、仕組みを決めずに読む: ブロック {start:,}〜{safe:,}(まだ読んでいない {todo:,}ブロック。"
+                f"記録の形 {len(venues.FAMILIES)}種類)")
+            added = sum(mapper.scan(a, b) for a, b in ranges)
         say(f"  新しく帳簿に足した記録 {added}件")
         summary = venues.summarize(conn, chain_name, _start_ts(chain, start))
         if summary_out is not None:
