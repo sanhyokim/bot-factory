@@ -6,7 +6,7 @@ import pytest
 from factory import config
 from factory.onchain import compound, scan_command, stranded, venues
 from factory.onchain.abi import address, topic, words
-from tests.fakes_chain import MULTICALL, FakeNode, word
+from tests.fakes_chain import MULTICALL, WETH, FakeNode, word
 from tests.test_onchain_actors import make_chain, make_scanner
 from tests.test_onchain_compound import (
     CETH,
@@ -128,6 +128,7 @@ def test_finds_open_borrowers_and_measures_them(conn):
     assert u1["repay_usd"] == pytest.approx(500)                # 借金 × 0.5(担保 ÷ 1.08 より小さい)
     assert u1["profit_usd"] == pytest.approx(500 * (1.08 * (1 - 0.028) - 1))
     assert u1["allowed"] == 0 and u1["cash_ok"] == 1
+    assert u1["market_ratio"] == pytest.approx(2_600 / 3_000)   # 仕組みの ETH の値段 ÷ Aave の値段表
     assert (stranded.NOBODY.lower(), U1) in lending.asked      # 清算する側を決めていない仕組みには、誰でもない住所で聞く
 
     u2 = rows[U2]
@@ -138,6 +139,26 @@ def test_finds_open_borrowers_and_measures_them(conn):
     assert u6["debt_usd"] == pytest.approx(600) and u6["collateral_usd"] == pytest.approx(0.3 * 3_000)
     assert u6["repay_usd"] == pytest.approx(300) and u6["profit_usd"] == pytest.approx(300 * 0.1)
     assert u6["allowed"] is None and u6["cash_ok"] == 0          # dForce には聞かない。現金は0.01 WETH しか無い
+    assert u6["market_ratio"] == pytest.approx(1.0)
+
+
+def test_collateral_the_market_cannot_price_is_flagged(conn):
+    """仕組みの値段表だけが値段を付けている担保(崩れた安定通貨など)は「比べられない」と出す。"""
+    node, _, chain = setup(conn)
+    del node.prices[WETH]                                       # Aave の値段表に WETH が無いことにする
+    f = make(conn, node, chain, [1_000_000.0])
+    t = f.run(f.places({"dForce の写し": DF}), from_block=1, to_block=99_000)
+    rows = stranded.summarize(conn, "arbitrum")
+    assert all(r["market_ratio"] is None for r in rows)
+    text = "\n".join(stranded.describe(rows, t, chain="arbitrum", days=180, now=1_000_000.0))
+    assert "比べられない" in text and "担保の値段が市場と5%以内で合う分 0人・$0.00" in text
+
+
+def test_old_ledger_gets_the_new_column(conn):
+    conn.execute("CREATE TABLE chain_stranded (chain TEXT, controller TEXT, borrower TEXT, first_seen INTEGER, "
+                 "last_seen INTEGER, runs INTEGER, updated_at TEXT, PRIMARY KEY (chain, controller, borrower))")
+    stranded.ensure_schema(conn)
+    assert "market_ratio" in {r[1] for r in conn.execute("PRAGMA table_info(chain_stranded)")}
 
 
 def test_remembers_how_long_a_borrower_stays_open(conn):
@@ -172,6 +193,7 @@ def test_stranded_scan_command(conn, monkeypatch):
     assert "今清算できる借り手 3人" in text and "仕組みが清算してよいと答えた分 1人" in text
     assert f"{COMP}  {U1}  $1,000.00(USDC)  $1,300.00(cETH)  $500.00  $24.88  できる  足りる" in text
     assert "断られた(番号 3)" in text and "聞けなかった" in text
+    assert "$24.88  できる  足りる  0.87倍" in text
 
 
 def test_stranded_scan_without_places(conn):
