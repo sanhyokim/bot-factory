@@ -12,7 +12,9 @@
 4. 清算できる借り手ごとに: 市場ごとの借金と担保をドルにし、一番大きい借金を返して一番大きい担保を受け取る形で、
    返せる額(借金 × closeFactor と、担保 ÷ 上乗せ の小さい方)と、利益の目安(返せる額 ×(上乗せ ×(1 − 仕組みの
    取り分)− 1))を出す。仕組みに「この清算をしてよいか」(liquidateBorrowAllowed)を聞き、担保の市場に払い出す
-   現金があるかも見る(現金が無い市場では、受け取った担保を元のトークンに戻せない)
+   現金があるかも見る(現金が無い市場では、受け取った担保を元のトークンに戻せない)。担保の値段は、仕組みの値段表と
+   市場の値段(Aave の値段表)を比べる。仕組みの値段表だけが高いままの担保(崩れた安定通貨など)は、受け取っても
+   売れないので、利益の目安は見かけだけになる(11/8、Arbitrum の dForce の USX)
 5. 帳簿 chain_stranded に、初めて見た時刻と見た回数を残す。何日も続けて清算できるままなら、誰も見ていない見込みが高い
 
 利益の目安は、交換の滑りとガス代を引かない粗い値(上乗せが読めない仕組みは1.08、closeFactor は0.5 とみなす)。
@@ -53,6 +55,7 @@ BORROW_KEY = "stranded_borrow"
 NOBODY = "0x000000000000000000000000000000000000dEaD"   # 清算してよいかを聞く時の、清算する側(誰でもない住所)
 DEFAULT_INCENTIVE = 1.08      # 上乗せが読めない仕組みの目安
 DEFAULT_CLOSE = 0.5
+FAIR_GAP = 0.05               # 担保の値段が市場とこの割合以内なら「合う」
 MIN_ASK_USD = 0.5             # 利益の目安がこれより小さい借り手には、清算してよいかと現金を聞かない
 
 SCHEMA = """
@@ -79,6 +82,7 @@ CREATE TABLE IF NOT EXISTS chain_stranded (
     profit_usd        REAL,               -- 利益の目安(滑り・ガス代は引かない)
     allowed           INTEGER,            -- 仕組みの答え: 0 なら清算してよい。それ以外は断った番号。NULL は聞けなかった
     cash_ok           INTEGER,            -- 担保の市場に、受け取る担保の分の現金があるか
+    market_ratio      REAL,               -- 担保の値段: 仕組みの値段表 ÷ 市場の値段(Aave の値段表)。NULL は比べられない
     updated_at        TEXT NOT NULL,
     PRIMARY KEY (chain, controller, borrower)
 );
@@ -88,6 +92,10 @@ CREATE TABLE IF NOT EXISTS chain_stranded (
 def ensure_schema(conn: sqlite3.Connection) -> None:
     venues.ensure_schema(conn)
     conn.executescript(SCHEMA)
+    have = {r[1] for r in conn.execute("PRAGMA table_info(chain_stranded)")}
+    if "market_ratio" not in have:          # 2026-11-08 に足した列
+        conn.execute("ALTER TABLE chain_stranded ADD COLUMN market_ratio REAL")
+        conn.commit()
 
 
 @dataclass
@@ -287,7 +295,7 @@ class Finder:
                 coll[m] = held * rate / 1e18 / 10 ** dec * px
         row = {"debt_usd": sum(debt.values()) if debt else None, "collateral_usd": sum(coll.values()) if coll else None,
                "repay_market": None, "collateral_market": None, "repay_usd": None, "profit_usd": None,
-               "allowed": None, "cash_ok": None}
+               "allowed": None, "cash_ok": None, "market_ratio": None}
         if not debt or not coll:
             return row
         rm, cm = max(debt, key=debt.get), max(coll, key=coll.get)
@@ -297,6 +305,12 @@ class Finder:
         repay = min(close * debt[rm], coll[cm] / incentive)
         row.update({"repay_market": rm, "collateral_market": cm, "repay_usd": repay,
                     "profit_usd": repay * (incentive * (1 - share) - 1)})
+        # 担保の値段を市場(Aave の値段表)と比べる。仕組みの値段表だけが高いままの担保(崩れた安定通貨など)は、
+        # 受け取っても売れないので、利益の目安は見かけだけになる(11/8 の dForce の USX)
+        token, _ = r.underlying(cm)
+        mkt = self._once(("market", token or "native"), lambda: self._market_price(token))
+        c_now = self._price(place, cm)
+        row["market_ratio"] = c_now / mkt if mkt and c_now else None
         if row["profit_usd"] < MIN_ASK_USD:       # 小さすぎる清算には、清算してよいかと現金を聞かない(読む回数を減らす)
             return row
         # 清算してよいか(Compound の呼び方だけ。利息を足してから聞く)と、担保の市場の現金
@@ -316,6 +330,10 @@ class Finder:
         if cash is not None and c_px:
             row["cash_ok"] = int(cash[0] / 10 ** c_dec * c_px >= repay * incentive)
         return row
+
+    def _market_price(self, token: str | None) -> float | None:
+        px, _ = self.reader.scanner.price(token or self.reader.scanner.weth, "latest")
+        return px or None
 
     # --- 1回 ---
     def run(self, places: list[Place], *, from_block: int, to_block: int) -> dict:
@@ -339,17 +357,19 @@ class Finder:
                 self.conn.execute(
                     """INSERT INTO chain_stranded(chain, controller, borrower, first_seen, last_seen, runs, debt_usd,
                            collateral_usd, repay_market, repay_symbol, collateral_market, collateral_symbol, repay_usd,
-                           profit_usd, allowed, cash_ok, updated_at) VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?,?,?)
+                           profit_usd, allowed, cash_ok, market_ratio, updated_at)
+                       VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?,?,?,?)
                        ON CONFLICT(chain, controller, borrower) DO UPDATE SET last_seen = excluded.last_seen,
                            runs = runs + 1, debt_usd = excluded.debt_usd, collateral_usd = excluded.collateral_usd,
                            repay_market = excluded.repay_market, repay_symbol = excluded.repay_symbol,
                            collateral_market = excluded.collateral_market,
                            collateral_symbol = excluded.collateral_symbol, repay_usd = excluded.repay_usd,
                            profit_usd = excluded.profit_usd, allowed = excluded.allowed, cash_ok = excluded.cash_ok,
+                           market_ratio = excluded.market_ratio,
                            updated_at = excluded.updated_at""",
                     (self.chain.name, p.controller, user, now, now, m["debt_usd"], m["collateral_usd"],
                      m["repay_market"], sym["repay_market"], m["collateral_market"], sym["collateral_market"],
-                     m["repay_usd"], m["profit_usd"], m["allowed"], m["cash_ok"],
+                     m["repay_usd"], m["profit_usd"], m["allowed"], m["cash_ok"], m["market_ratio"],
                      now_jst().isoformat(timespec="seconds")))
             gone = self.conn.execute(
                 f"""DELETE FROM chain_stranded WHERE chain = ? AND controller = ?
@@ -388,6 +408,10 @@ def money(v: float | None) -> str:
     return f"${v:,.2f}" if v is not None else "値段が読めない"
 
 
+def _ratio(v: float | None) -> str:
+    return "比べられない" if v is None else f"{v:.2f}倍"
+
+
 def _allowed(code) -> str:
     return "聞けなかった" if code is None else "できる" if code == 0 else f"断られた(番号 {code})"
 
@@ -400,18 +424,21 @@ def describe(rows: list[dict], totals: dict, *, chain: str, days: float, top: in
     if not rows:
         return out + ["  今清算できる借り手はいない"]
     ok = [r for r in rows if r["allowed"] == 0]
+    fair = [r for r in rows if r.get("market_ratio") is not None and abs(r["market_ratio"] - 1) <= FAIR_GAP]
     total = sum(r["profit_usd"] or 0.0 for r in rows)
     out.append(f"  今清算できる借り手 {len(rows)}人。利益の目安の合計 ${total:,.2f}"
-               f"(仕組みが清算してよいと答えた分 {len(ok)}人・${sum(r['profit_usd'] or 0.0 for r in ok):,.2f})"
+               f"(仕組みが清算してよいと答えた分 {len(ok)}人・${sum(r['profit_usd'] or 0.0 for r in ok):,.2f}、"
+               f"担保の値段が市場と{FAIR_GAP:.0%}以内で合う分 {len(fair)}人・"
+               f"${sum(r['profit_usd'] or 0.0 for r in fair):,.2f})"
                + (f"。前回から消えた {totals['gone']}人" if totals.get("gone") else ""))
     out.append("  順位 仕組み 借り手 借金(一番大きい市場) 担保(一番大きい市場) 1回で返せる額 利益の目安 清算してよいか "
-               "担保の市場の現金 続いている")
+               "担保の市場の現金 担保の値段(仕組み÷市場) 続いている")
     for i, r in enumerate(rows[:top], 1):
         days_open = (now - r["first_seen"]) / 86400
         cash = "-" if r["cash_ok"] is None else "足りる" if r["cash_ok"] else "足りない"
         out.append(f"  {i:>3}. {r['controller']}  {r['borrower']}  {money(r['debt_usd'])}({r['repay_symbol'] or '-'})  "
                    f"{money(r['collateral_usd'])}({r['collateral_symbol'] or '-'})  {money(r['repay_usd'])}  "
-                   f"{money(r['profit_usd'])}  {_allowed(r['allowed'])}  {cash}  "
+                   f"{money(r['profit_usd'])}  {_allowed(r['allowed'])}  {cash}  {_ratio(r.get('market_ratio'))}  "
                    f"初めて見てから{days_open:.1f}日({r['runs']}回)")
     if len(rows) > top:
         rest = rows[top:]
