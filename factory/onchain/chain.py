@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from .. import config
 from .abi import to_int
-from .rpc import RangeTooLarge, Relay, RpcError
+from .rpc import RangeTooLarge, Relay, RpcError, TooManyAddresses
 
 HEAD_TTL_SECONDS = 10      # 最新のブロック番号を覚えておく秒数(確定の判定に使うだけなので少し古くてよい)
 
@@ -27,6 +27,7 @@ class Chain:
         self._head: int | None = None
         self._head_at = 0.0
         self.log_step = max_log_blocks      # 今の「1回で読むブロック数」。断られたら半分にして、この後も使う
+        self.addr_step: int | None = None   # 1回のログで決める住所の数の上限。住所の数で断られて分かったら、この後も使う
         self._block_time: float | None = None
 
     @classmethod
@@ -111,7 +112,8 @@ class Chain:
         cache=False なら、確定したブロックでもキャッシュに残さない(交換の記録のように量が多いもの)。
         どの接続先にも広すぎると断られたら、受けてくれそうな広さ(分からなければ半分)にして読み直す。
         min_log_blocks より狭くしないと読めない時は、あきらめて RangeTooLarge(断られ方の取り違えで、
-        何万回も呼ぶことにならないように)。"""
+        何万回も呼ぶことにならないように)。
+        住所を並べた時に、住所の数で断る接続先しか使えなければ、その数ずつに分けて読み、古い順に並べ直す。"""
         if from_block > to_block:
             return []
         out: list[dict] = []
@@ -119,19 +121,34 @@ class Chain:
         while start <= to_block:
             end = min(to_block, (start // self.log_step + 1) * self.log_step - 1)
             flt: dict = {"fromBlock": hex(start), "toBlock": hex(end)}
-            if address:
-                flt["address"] = address
             if topics:
                 flt["topics"] = topics
             try:
-                rows = self.relay.call("eth_getLogs", [flt], purpose=purpose,
-                                       cache=cache and self._settled(end, purpose))
+                rows = self._read_logs(flt, address, purpose, cache and self._settled(end, purpose))
             except RangeTooLarge as e:
                 step = e.max_span if e.max_span and e.max_span < self.log_step else self.log_step // 2
                 if step < self.min_log_blocks:
                     raise RangeTooLarge(f"ログを{self.min_log_blocks:,}ブロックずつにしても読めない: {e}") from e
                 self.log_step = step
                 continue
-            out.extend(rows or [])
+            except TooManyAddresses as e:
+                if not isinstance(address, list) or e.max_addresses < 1 or \
+                        (self.addr_step is not None and e.max_addresses >= self.addr_step):
+                    raise
+                self.addr_step = e.max_addresses
+                continue
+            out.extend(rows)
             start = end + 1
         return out
+
+    def _read_logs(self, flt: dict, address: str | list[str] | None, purpose: str, cache: bool) -> list[dict]:
+        groups: list = [address]
+        if isinstance(address, list) and self.addr_step and len(address) > self.addr_step:
+            groups = [address[i:i + self.addr_step] for i in range(0, len(address), self.addr_step)]
+        rows: list[dict] = []
+        for group in groups:
+            f = {**flt, "address": group} if group else flt
+            rows.extend(self.relay.call("eth_getLogs", [f], purpose=purpose, cache=cache) or [])
+        if len(groups) > 1:
+            rows.sort(key=lambda lg: (to_int(lg.get("blockNumber") or "0x0"), to_int(lg.get("logIndex") or "0x0")))
+        return rows

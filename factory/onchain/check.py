@@ -119,6 +119,12 @@ def endpoint_notes(relay: Relay, indent: str = "") -> list[str]:
         for ep in narrow:
             lines.append(f"{indent}  {_short(ep.url)}: 断られた言い方「{ep.log_note}」"
                          f"→ ログは{ep.log_limit:,}ブロック以下の時だけ使う")
+    few = [ep for ep in relay.endpoints if ep.max_addresses]
+    if few:
+        lines.append(f"{indent}ログの住所の数で断られた接続先(住所を分けて読む時に使う)")
+        for ep in few:
+            lines.append(f"{indent}  {_short(ep.url)}: 断られた言い方「{ep.address_note}」"
+                         f"→ ログの住所は{ep.max_addresses}か所ずつにする")
     used_up = [ep for ep in relay.endpoints if ep.quota_note]
     if used_up:
         lines.append(f"{indent}使える量を使い切ったと言われた接続先({relay.cooldown_quota / 60:g}分休ませた)")
