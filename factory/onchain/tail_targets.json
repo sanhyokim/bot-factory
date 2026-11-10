@@ -1,0 +1,4444 @@
+[
+ {
+  "chain": "bsc",
+  "id": 56,
+  "compound": [
+   [
+    "neku",
+    "comptroller",
+    "0xD5B649c7d27C13a2b80425daEe8Cb6023015Dc6B",
+    false
+   ],
+   [
+    "knightswap-lending",
+    "comptroller",
+    "0x4f92913b86d5e79593fa2e475a8232b22ef17ed1",
+    true
+   ],
+   [
+    "apeswap-lending",
+    "comptroller",
+    "0xad48b2c9dc6709a560018c678e918253a65df86e",
+    false
+   ],
+   [
+    "lander",
+    "comptroller",
+    "0x344655CB08a25A7b2501CafB47CdF9490cE7fad3",
+    false
+   ],
+   [
+    "fenrirfinance",
+    "comptroller",
+    "0x56b4B49f31517be8DacC2ED471BCc20508A0e29D",
+    true
+   ],
+   [
+    "usdfi-lending",
+    "comptroller",
+    "0x87363D74CD88A6220926Cf64bDEFd23ae63BE115",
+    false
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0x15B5220024c3242F7D61177D6ff715cfac4909eD",
+    false
+   ],
+   [
+    "segment-finance",
+    "comptroller",
+    "0x57E09c96DAEE58B77dc771B017de015C38060173",
+    false
+   ],
+   [
+    "cream",
+    "comptroller",
+    "0x589DE0F0Ccf905477646599bb3E5C622C84cC0BA",
+    true
+   ],
+   [
+    "filda",
+    "comptroller",
+    "0xF0700A310Cb14615a67EEc1A8dAd5791859f65f1",
+    false
+   ],
+   [
+    "liqee",
+    "comptroller",
+    "0x6d290f45A280A688Ff58d095de480364069af110",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x8c925623708A94c7DE98a8e83e8200259fF716E0",
+    false
+   ],
+   [
+    "OCP",
+    "comptroller",
+    "0xc001c415b7e78ea4a3edf165d8f44b70391f8c3c",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0xfd36e2c2a6789db23113685031d7f16329158384",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0x0b53E608bD058Bb54748C35148484fD627E6dc0A",
+    false
+   ],
+   [
+    "demeter",
+    "comptroller",
+    "0x3632E78219227b172F0aaF56F92FB08D87C94379",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x1851e32F34565cb95754310b031C5a2Fc0a8a905",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x31d76A64Bc8BbEffb601fac5884372DEF910F044",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xb2234eE69555EE4C3b6cEA4fd25c4979BbDBf0fd",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xEF0B026F93ba744cA3EDf799574538484c2C4f80",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x5373C052Df65b317e48D6CAD8Bb8AC50995e9459",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xCB2841d6d300b9245EB7745Db89A0A50D8468501",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x35F3a59389Dc3174A98610727C2e349E275Dc909",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x3F239A5C45849391E7b839190597B5130780790d",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x7f8B5fCA1a63C632776ffc9936D2e323c14B57f8",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x20a0ED8c794F96C1479e2867995C99E931Ee36Ba",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x5EB884651F50abc72648447dCeabF2db091e4117",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xBc06411a6204B36ce6a5559FFBE3a56C5960F6fe",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x1B6D43501E0c7201Ea061961cBAEc88FB012f57B",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "aqualoan",
+    "short",
+    "0xDc33eAA50B8707f791478Cec324e451E20FDa7ed",
+    false
+   ],
+   [
+    "openfi",
+    "poolDatas",
+    "0xeFD74781D9C468FFE6a4d8CA7720E8EF0223744E",
+    false
+   ],
+   [
+    "the-granary",
+    "short",
+    "0x7c8E7536c5044E1B3693eB564C6dE3a3CE58bbDa",
+    false
+   ],
+   [
+    "sculptor-finance",
+    "addressesProviderRegistry",
+    "0xa1eBB37b5A19050A192c38C82f25f4aBf0158F39",
+    false
+   ],
+   [
+    "valas",
+    "addressesProviderRegistry",
+    "0x99E41A7F2Dd197187C8637D1D151Dc396261Bc14",
+    false
+   ],
+   [
+    "kinza",
+    "addressesProviderRegistry",
+    "0x37D7Eb561E189895E5c8601Cd03EEAB67C269189",
+    false
+   ],
+   [
+    "kinza",
+    "dataHelpers",
+    "0x09ddc4ae826601b0f9671b9edffdf75e7e6f5d61",
+    false
+   ],
+   [
+    "harbor",
+    "short",
+    "0x31406A8c12813b64bF9985761BA51412B92fFb4E",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/bsc",
+   "https://rpc.hostdefi.com/api/rpc/bsc",
+   "https://lb.routeme.sh/rpc/evm/56",
+   "https://rpc.nodeflare.app/bnb/public",
+   "https://bsc-dataseed.bnbchain.org/",
+   "https://bsc-dataseed1.defibit.io/",
+   "https://bsc-dataseed1.ninicoin.io/",
+   "https://bsc-dataseed2.defibit.io/",
+   "https://bsc-dataseed3.defibit.io/",
+   "https://bsc-dataseed4.defibit.io/",
+   "https://bsc-dataseed2.ninicoin.io/",
+   "https://bsc-dataseed3.ninicoin.io/",
+   "https://bsc-dataseed4.ninicoin.io/",
+   "https://bsc-dataseed1.bnbchain.org/",
+   "https://bsc-dataseed2.bnbchain.org/",
+   "https://bsc-dataseed3.bnbchain.org/",
+   "https://bsc-dataseed4.bnbchain.org/",
+   "https://rpc-bsc.48.club",
+   "https://0.48.club",
+   "https://binance-smart-chain-public.nodies.app",
+   "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
+   "https://binance.nodereal.io",
+   "https://public.1rpc.io/bnb",
+   "https://bsc.rpc.blxrbdn.com/",
+   "https://bsc.blockpi.network/v1/rpc/private",
+   "https://bnb.api.onfinality.io/public",
+   "https://bsc-rpc.publicnode.com",
+   "https://bsc-mainnet.public.blastapi.io",
+   "https://bsc.meowrpc.com",
+   "https://api.zan.top/bsc-mainnet",
+   "https://bsc.drpc.org",
+   "https://services.tokenview.io/vipapi/nodeservice/bsc?apikey=gVFJX5OyPdc2kHH7youg",
+   "https://rpc.polysplit.cloud/v1/chain/56",
+   "https://bsc-mainnet.gateway.tatum.io",
+   "https://public-bsc.nownodes.io",
+   "https://bsc.blockrazor.xyz",
+   "https://bsc.blockrazor.xyz/fullprivacy",
+   "https://bsc.blockrazor.xyz/maxbackrun",
+   "https://rpc.owlracle.info/bsc/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://bsc.api.pocket.network",
+   "https://public-bsc-mainnet.fastnode.io",
+   "https://api-bsc-mainnet-full.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://bsc.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/bsc",
+   "https://rpc-bsc.blockmachine.io",
+   "https://rpc.backrunshield.com",
+   "https://bnb-mainnet.rpc.thyme.sh/public"
+  ]
+ },
+ {
+  "chain": "ethereum",
+  "id": 1,
+  "compound": [
+   [
+    "capyfi",
+    "comptroller",
+    "0x0b9af1fd73885aD52680A1aeAa7A3f17AC702afA",
+    false
+   ],
+   [
+    "mantradao",
+    "comptroller",
+    "0x606246e9EF6C70DCb6CEE42136cd06D127E2B7C7",
+    false
+   ],
+   [
+    "tonpound",
+    "comptroller",
+    "0x1775286Cbe9db126a95AbF52c58a3214FCA26803",
+    false
+   ],
+   [
+    "strike",
+    "comptroller",
+    "0xe2e17b2CBbf48211FA7eB8A875360e5e39bA2602",
+    true
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0x60A4570bE892fb41280eDFE9DB75e1a62C70456F",
+    false
+   ],
+   [
+    "compound-onchain",
+    "comptroller",
+    "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B",
+    false
+   ],
+   [
+    "cream",
+    "comptroller",
+    "0xbdC857eae1D15ad171E11af6FC3e99413Ed57Ec4",
+    false
+   ],
+   [
+    "liqee",
+    "comptroller",
+    "0x8f1f15DCf4c70873fAF1707973f6029DEc4164b3",
+    false
+   ],
+   [
+    "ironbank",
+    "comptroller",
+    "0xAB1c342C7bf5Ec5F02ADEA1c2270670bCa144CbB",
+    true
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x0C8c1ab017c3C0c8A48dD9F1DB2F59022D190f0b",
+    false
+   ],
+   [
+    "fluxfinance",
+    "comptroller",
+    "0x95Af143a021DF745bc78e845b54591C53a8B3A51",
+    false
+   ],
+   [
+    "cozy",
+    "comptroller",
+    "0x895879b2c1fbb6ccfcd101f2d3f3c76363664f92",
+    false
+   ],
+   [
+    "damm-finance",
+    "comptroller",
+    "0x4F96AB61520a6636331a48A11eaFBA8FB51f74e4",
+    false
+   ],
+   [
+    "bao-markets",
+    "comptroller",
+    "0x0Be1fdC1E87127c4fe7C05bAE6437e3cf90Bf8d8",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0x687a01ecF6d3907658f7A7c714749fAC32336D1B",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0x8B53Ab2c0Df3230EA327017C91Eb909f815Ad113",
+    false
+   ],
+   [
+    "minterest",
+    "comptroller",
+    "0xD13f50274a68ABF2384C79248ADc259b3777c081",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x0f390559f258eb8591c8e31cf0905e97cf36ace2",
+    true
+   ],
+   [
+    "moonwell",
+    "comptroller",
+    "0xdec80bB934397575594E91970b37baf65f5b21bE",
+    false
+   ],
+   [
+    "donkey",
+    "comptroller",
+    "0x55e41bc3a99aa24E194D507517b1e8b65eFdAa9e",
+    false
+   ],
+   [
+    "onyx",
+    "comptroller",
+    "0x7D61ed92a6778f5ABf5c94085739f1EDAbec2800",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "aave-horizon",
+    "short",
+    "0x53519c32f73fE1797d10210c4950fFeBa3b21504",
+    false
+   ],
+   [
+    "ploutos",
+    "poolDatas",
+    "0x1A875c28610F0155D377bBD725cc59d055e2D192",
+    true
+   ],
+   [
+    "edel",
+    "poolDatas",
+    "0xf3A3F900151c092007FD495ABf3f0f6162A37501",
+    false
+   ],
+   [
+    "the-granary",
+    "short",
+    "0x5C93B799D31d3d6a7C977f75FDB88d069565A55b",
+    false
+   ],
+   [
+    "aave-arc",
+    "addressesProviderRegistry",
+    "0x6FdfafB66d39cD72CFE7984D3Bbcc76632faAb00",
+    false
+   ],
+   [
+    "aave-arc",
+    "dataHelpers",
+    "0x71B53fC437cCD988b1b89B1D4605c3c3d0C810ea",
+    false
+   ],
+   [
+    "spark-fi",
+    "addressesProviderRegistry",
+    "0x03cFa0C4622FF84E50E75062683F44c9587e6Cc1",
+    false
+   ],
+   [
+    "spark-fi",
+    "dataHelpers",
+    "0xFc21d6d146E6086B8359705C8b28512a983db0cb",
+    false
+   ],
+   [
+    "kinza",
+    "addressesProviderRegistry",
+    "0x37c9E6eEAbE799878FF9d32984A3a0b91243cbC6",
+    false
+   ],
+   [
+    "kinza",
+    "dataHelpers",
+    "0xE44990a8a732605Eddc0870597d2Cf4A2637F038",
+    false
+   ],
+   [
+    "dtrinity-dlend",
+    "dataHelpers",
+    "0x7BC6d94344392ac7898Ce197Ae382e21c71347f2",
+    false
+   ],
+   [
+    "roe",
+    "addressesProviderRegistry",
+    "0x0029B254d039d8C5C88512a44EAa6FF999296009",
+    false
+   ],
+   [
+    "roe",
+    "dataHelpers",
+    "0xC68A4F7764f5219f250614d5647258a17A51a6c7",
+    false
+   ],
+   [
+    "mahalend",
+    "dataHelpers",
+    "0xCB5a1D4a394C4BA58999FbD7629d64465DdA70BC",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/eth",
+   "https://rpc.hostdefi.com/api/rpc/ethereum",
+   "https://lb.routeme.sh/rpc/evm/1",
+   "https://one.valve.city/rpc/vk_demo/evm/1",
+   "https://rpc.nodeflare.app/eth/public",
+   "https://eth-mainnet.nodereal.io/v1/1659dfb40aa24bbb8153a677b98064d7",
+   "https://ethereum-rpc.publicnode.com",
+   "https://public.1rpc.io/eth",
+   "https://rpc.mevblocker.io",
+   "https://rpc.flashbots.net/",
+   "https://virginia.rpc.blxrbdn.com/",
+   "https://uk.rpc.blxrbdn.com/",
+   "https://singapore.rpc.blxrbdn.com/",
+   "https://eth.rpc.blxrbdn.com/",
+   "https://cloudflare-eth.com/",
+   "https://eth-mainnet.public.blastapi.io",
+   "https://ethereum-public.nodies.app",
+   "https://ethereum.public.blockpi.network/v1/rpc/public",
+   "https://eth-mainnet.g.alchemy.com/v2/demo",
+   "https://mainnet.eth.cloud.ava.do/",
+   "https://ethereumnodelight.app.runonflux.io",
+   "https://rpc.eth.gateway.fm",
+   "https://eth.meowrpc.com",
+   "https://eth.drpc.org",
+   "https://mainnet.gateway.tenderly.co",
+   "https://virtual.mainnet.rpc.tenderly.co/5804dcf7-70e6-4988-b2b0-3672193e0c91",
+   "https://gateway.tenderly.co/public/mainnet",
+   "https://api.zan.top/eth-mainnet",
+   "https://eth.merkle.io",
+   "https://services.tokenview.io/vipapi/nodeservice/eth?apikey=qVHq2o6jpaakcw3lRstl",
+   "https://rpc.polysplit.cloud/v1/chain/1",
+   "https://ethereum-mainnet.gateway.tatum.io",
+   "https://public-eth.nownodes.io",
+   "https://eth.blockrazor.xyz",
+   "https://eth.blockrazor.xyz/fullprivacy",
+   "https://eth.blockrazor.xyz/maxbackrun",
+   "https://0xrpc.io/eth",
+   "https://rpc.owlracle.info/eth/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://eth.api.onfinality.io/public",
+   "https://ethereum-json-rpc.stakely.io",
+   "https://eth.api.pocket.network",
+   "https://api-ethereum-mainnet-reth.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.fullsend.to/",
+   "https://mainnet.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/eth",
+   "https://rpc-eth.blockmachine.io",
+   "https://rpc.driftguard.live/eth",
+   "https://eth.blocktailor.com",
+   "https://ethereum-mainnet.rpc.thyme.sh/public"
+  ]
+ },
+ {
+  "chain": "arbitrum",
+  "id": 42161,
+  "compound": [
+   [
+    "aquarius-loan",
+    "comptroller",
+    "0xf854c6b57e6d8ec3e790ec6da1a13060d19549d4",
+    true
+   ],
+   [
+    "whitehole-finance",
+    "comptroller",
+    "0x1d019f2d14bdb81bab7ba4ec7e20868e669c32b1",
+    true
+   ],
+   [
+    "neku",
+    "comptroller",
+    "0xD5B649c7d27C13a2b80425daEe8Cb6023015Dc6B",
+    false
+   ],
+   [
+    "solidlizard-lending",
+    "comptroller",
+    "0x9FfBdfcc508e76ee2b719eF6218879E938eF056C",
+    false
+   ],
+   [
+    "paribus",
+    "comptroller",
+    "0x712E2B12D75fe092838A3D2ad14B6fF73d3fdbc9",
+    true
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0xBfb69860C91A22A2287df1Ff3Cdf0476c5aab24A",
+    false
+   ],
+   [
+    "cream",
+    "comptroller",
+    "0xbadaC56c9aca307079e8B8FC699987AAc89813ee",
+    false
+   ],
+   [
+    "filda",
+    "comptroller",
+    "0xF67EF5E77B350A81DcbA5430Bc8bE876eDa8D591",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0xaa87715E858b482931eB2f6f92E504571588390b",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0x317c1A5739F39046E20b08ac9BeEa3f10fD43326",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0x8E7e9eA9023B81457Ae7E6D2a51b003D421E5408",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x0f390559f258eb8591c8e31cf0905e97cf36ace2",
+    true
+   ],
+   [
+    "tender-finance",
+    "comptroller",
+    "0xeed247Ba513A8D6f78BE9318399f5eD1a4808F8e",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x185Fa7d0e7d8A4FE7E09eB9df68B549c660e1116",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x44a03C14F30D49cB43b7F7E91E987ecC10cc0b09",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x0F65a7fBCb69074cF8BE8De1E01Ef573da34bD59",
+    true
+   ],
+   [
+    "the-granary",
+    "short",
+    "0x512f582fFCCF3C14bD872152EeAe60866dCB2A1e",
+    false
+   ],
+   [
+    "radiant",
+    "addressesProviderRegistry",
+    "0x7BB843f889e3a0B307299c3B65e089bFfe9c0bE0",
+    false
+   ],
+   [
+    "roe",
+    "addressesProviderRegistry",
+    "0x01b76559D512Fa28aCc03630E8954405BcBB1E02",
+    false
+   ],
+   [
+    "roe",
+    "dataHelpers",
+    "0x156a166B58afB948f4c60e1DC6bEdFF55760c319",
+    false
+   ],
+   [
+    "mahalend",
+    "dataHelpers",
+    "0xE76C1D2a7a56348574810e83D38c07D47f0641F3",
+    false
+   ],
+   [
+    "blend-finance",
+    "addressesProviderRegistry",
+    "0xD489a9cc2eF0b990c6a30Ed9AfF6EC63A2765F25",
+    false
+   ],
+   [
+    "blend-finance",
+    "dataHelpers",
+    "0xBB7cF099BAfc69a30D4f21878F2FE3Ac10e768fA",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/arbitrum",
+   "https://rpc.hostdefi.com/api/rpc/arbitrum",
+   "https://lb.routeme.sh/rpc/evm/42161",
+   "https://rpc.nodeflare.app/arb/public",
+   "https://arb1.arbitrum.io/rpc",
+   "https://public.1rpc.io/arb",
+   "https://arbitrum-one-public.nodies.app",
+   "https://arb-mainnet.g.alchemy.com/v2/demo",
+   "https://arbitrum-one.public.blastapi.io",
+   "https://arbitrum-one-rpc.publicnode.com",
+   "https://arbitrum.meowrpc.com",
+   "https://api.zan.top/arb-one",
+   "https://arbitrum.drpc.org",
+   "https://api.stateless.solutions/arbitrum-one/v1/demo",
+   "https://arbitrum.gateway.tenderly.co",
+   "https://rpc.owlracle.info/arb/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://arbitrum.api.onfinality.io/public",
+   "https://arb-one-mainnet.gateway.tatum.io/",
+   "https://arb-one.api.pocket.network",
+   "https://public-arb-mainnet.fastnode.io",
+   "https://api-arbitrum-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://arbitrum-one.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/arbitrum",
+   "https://rpcfree.com/arbitrum-rpc",
+   "https://arbitrum-one-mainnet.gateway.tatum.io",
+   "https://rpc-arbitrum.blockmachine.io/",
+   "https://rpc.driftguard.live/arb"
+  ]
+ },
+ {
+  "chain": "base",
+  "id": 8453,
+  "compound": [
+   [
+    "capyfi",
+    "comptroller",
+    "0x00dc4965916e03A734190fA382633657c71f867E",
+    false
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0x611375907733D9576907E125Fb29704712F0BAfA",
+    false
+   ],
+   [
+    "cream",
+    "comptroller",
+    "0x94d31f92a7f85b51F0B628467B3E660BA3e8D799",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0x0C7973F9598AA62f9e03B94E92C967fD5437426C",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0xBae8d153331129EB40E390A7Dd485363135fcE22",
+    false
+   ],
+   [
+    "sonne-finance",
+    "comptroller",
+    "0x1DB2466d9F5e10D7090E7152B68d62703a2245F0",
+    false
+   ],
+   [
+    "moonwell",
+    "comptroller",
+    "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C",
+    false
+   ],
+   [
+    "xpert",
+    "comptroller",
+    "0xaE9dFbb5E3848AB056acA352D783d7e569EF83b3",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x7dcb86dC49543E14A98F80597696fe5f444f58bC",
+    true
+   ],
+   [
+    "the-granary",
+    "short",
+    "0x5C93B799D31d3d6a7C977f75FDB88d069565A55b",
+    false
+   ],
+   [
+    "seamless",
+    "addressesProviderRegistry",
+    "0x90C5055530C0465AbB077FA016a3699A3F53Ef99",
+    false
+   ],
+   [
+    "seamless",
+    "dataHelpers",
+    "0x2A0979257105834789bC6b9E1B00446DFbA8dFBa",
+    false
+   ],
+   [
+    "zerolend",
+    "dataHelpers",
+    "0xA754b2f1535287957933db6e2AEE2b2FE6f38588",
+    true
+   ],
+   [
+    "extra-xlend",
+    "dataHelpers",
+    "0x1566DA4640b6a0b32fF309b07b8df6Ade40fd98D",
+    false
+   ],
+   [
+    "yieldlend",
+    "dataHelpers",
+    "0x43A5803c5f1Cb6241858669ad6F63fe5B3882434",
+    false
+   ],
+   [
+    "mooncakefi",
+    "dataHelpers",
+    "0x32aB5e8ad83d4afbEe7103d7ed4A9CAF7B76F195",
+    false
+   ],
+   [
+    "primefi-xyz",
+    "addressesProviderRegistry",
+    "0xBfeE735e3868f8990787CCEAA4B920C9Ed162b07",
+    false
+   ],
+   [
+    "blend-finance",
+    "addressesProviderRegistry",
+    "0xD489a9cc2eF0b990c6a30Ed9AfF6EC63A2765F25",
+    false
+   ],
+   [
+    "blend-finance",
+    "dataHelpers",
+    "0xBB7cF099BAfc69a30D4f21878F2FE3Ac10e768fA",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/base",
+   "https://rpc.hostdefi.com/api/rpc/base",
+   "https://lb.routeme.sh/rpc/evm/8453",
+   "https://rpc.nodeflare.app/base/public",
+   "https://mainnet.base.org",
+   "https://developer-access-mainnet.base.org",
+   "https://li-fi-base.intustechno.workers.dev/rpc",
+   "https://base.public.blockpi.network/v1/rpc/public",
+   "https://public.1rpc.io/base",
+   "https://base-public.nodies.app",
+   "https://base.meowrpc.com",
+   "https://base-mainnet.public.blastapi.io",
+   "https://base.gateway.tenderly.co",
+   "https://gateway.tenderly.co/public/base",
+   "https://base-rpc.publicnode.com",
+   "https://base.drpc.org",
+   "https://base.api.onfinality.io/public",
+   "https://base-mainnet.gateway.tatum.io",
+   "https://api.zan.top/base-mainnet",
+   "https://rpc.numa.network/base",
+   "https://rpc.owlracle.info/base/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://base.api.pocket.network",
+   "https://base.rpc.blxrbdn.com",
+   "https://api-base-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://base.drpc.org",
+   "https://base.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/base",
+   "https://rpcfree.com/base-rpc",
+   "https://rpc.degenprotocol.io/base",
+   "https://rpc-base.blockmachine.io",
+   "https://base.daybreak-rpc.network",
+   "https://rpc.driftguard.live/base"
+  ]
+ },
+ {
+  "chain": "polygon",
+  "id": 137,
+  "compound": [
+   [
+    "cream",
+    "comptroller",
+    "0x20ca53e2395fa571798623f1cfbd11fe2c114c24",
+    false
+   ],
+   [
+    "filda",
+    "comptroller",
+    "0xfBE0f3A3d1405257Bd69691406Eafa73f5095723",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0xFfceAcfD39117030314A07b2C86dA36E51787948",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0x52eaCd19E38D501D006D2023C813d7E37F025f37",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0xedba32185baf7fef9a26ca567bc4a6cbe426e499",
+    true
+   ],
+   [
+    "paxo-finance",
+    "comptroller",
+    "0x1eDf64B621F17dc45c82a65E1312E8df988A94D3",
+    false
+   ],
+   [
+    "keom",
+    "comptroller",
+    "0x5B7136CFFd40Eee5B882678a5D02AA25A48d669F",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xD265ff7e5487E9DD556a4BB900ccA6D087Eb3AD2",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xB08A309eFBFFa41f36A06b2D0C9a4629749b17a2",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xBd82D36B9CDfB9747aA12025CeCE3782EDe767FE",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xF1ABd146B4620D2AE67F34EA39532367F73bbbd2",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x59013D8a77D656777329D74ea1C88DA796005F1B",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x6A9b632010226F9bBbf2B6cb8B6990bE3F90cb0e",
+    true
+   ],
+   [
+    "roe",
+    "addressesProviderRegistry",
+    "0x1ceb99Acd9788bb7d7Ce4a90219cBb0627b008F9",
+    false
+   ],
+   [
+    "roe",
+    "dataHelpers",
+    "0xA0132fF55E4ee9818B2F2d769f6Ba5c14Cfe0DA4",
+    false
+   ],
+   [
+    "monolend",
+    "short",
+    "0x49Ce0308F3F55955D224453aECe7610b6983c123",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/polygon",
+   "https://rpc.hostdefi.com/api/rpc/polygon",
+   "https://lb.routeme.sh/rpc/evm/137",
+   "https://public.blazingnode.com",
+   "https://rpc.nodeflare.app/polygon/public",
+   "https://rpc.ankr.com/polygon",
+   "https://rpc-mainnet.matic.quiknode.pro",
+   "https://polygon-public.nodies.app",
+   "https://polygon-mainnet.public.blastapi.io",
+   "https://public.1rpc.io/matic",
+   "https://polygon-bor-rpc.publicnode.com",
+   "https://polygon-mainnet.g.alchemy.com/v2/demo",
+   "https://polygon.api.onfinality.io/public",
+   "https://polygon.drpc.org",
+   "https://polygon.gateway.tenderly.co",
+   "https://gateway.tenderly.co/public/polygon",
+   "https://api.zan.top/polygon-mainnet",
+   "https://polygon-mainnet.gateway.tatum.io",
+   "https://rpc.owlracle.info/poly/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://poly.api.pocket.network",
+   "https://api-polygon-mainnet-full.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.swiftnodes.io/rpc/polygon",
+   "https://rpc.private.mev-x.com/polygon",
+   "https://matic.rpc.sentio.xyz",
+   "https://rpcfree.com/polygon-rpc",
+   "https://rpc.satelink.network/rpc/polygon",
+   "https://rpc-polygon.blockmachine.io/",
+   "https://polygon-mainnet.rpc.thyme.sh/public"
+  ]
+ },
+ {
+  "chain": "optimism",
+  "id": 10,
+  "compound": [
+   [
+    "ironbank",
+    "comptroller",
+    "0xE0B57FEEd45e7D908f2d0DaCd26F113Cf26715BF",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x896aecb9E73Bf21C50855B7874729596d0e511CB",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0x5593FF68bE84C966821eEf5F0a988C285D5B7CeC",
+    false
+   ],
+   [
+    "unitus",
+    "comptroller",
+    "0xA300A84D8970718Dac32f54F61Bd568142d8BCF4",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x5a5755E1916F547D04eF43176d4cbe0de4503d5d",
+    true
+   ],
+   [
+    "sonne-finance",
+    "comptroller",
+    "0x60CF091cD3f50420d50fD7f707414d0DF4751C58",
+    false
+   ],
+   [
+    "moonwell",
+    "comptroller",
+    "0xCa889f40aae37FFf165BccF69aeF1E82b5C511B9",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "the-granary",
+    "short",
+    "0x872B9e8aea5D65Fbf29b8B05bfA4AA3fE94cC11f",
+    false
+   ],
+   [
+    "jolt",
+    "addressesProviderRegistry",
+    "0x3d8a1ea95ea4afa2469bfb80d94a4f9068670e82",
+    false
+   ],
+   [
+    "jolt",
+    "dataHelpers",
+    "0xe9c0EFeA9236467fa9aaC41E2c728aD47aaD74d3",
+    false
+   ],
+   [
+    "extra-xlend",
+    "dataHelpers",
+    "0xCC61E9470B5f0CE21a3F6255c73032B47AaeA9C0",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/optimism",
+   "https://rpc.hostdefi.com/api/rpc/optimism",
+   "https://lb.routeme.sh/rpc/evm/10",
+   "https://rpc.nodeflare.app/op/public",
+   "https://mainnet.optimism.io/",
+   "https://optimism-mainnet.public.blastapi.io",
+   "https://public.1rpc.io/op",
+   "https://optimism-public.nodies.app",
+   "https://opt-mainnet.g.alchemy.com/v2/demo",
+   "https://optimism.public.blockpi.network/v1/rpc/public",
+   "https://optimism.api.onfinality.io/public",
+   "https://optimism-rpc.publicnode.com",
+   "https://api.zan.top/opt-mainnet",
+   "https://optimism.drpc.org",
+   "https://optimism.gateway.tenderly.co",
+   "https://gateway.tenderly.co/public/optimism",
+   "https://api.stateless.solutions/optimism/v1/demo",
+   "https://optimism-mainnet.gateway.tatum.io",
+   "https://rpc.buildbear.io/esquivelfabian/",
+   "https://rpc.owlracle.info/opt/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://op.api.pocket.network",
+   "https://public-op-mainnet.fastnode.io",
+   "https://api-optimism-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://optimism.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/optimism",
+   "https://rpc-optimism.blockmachine.io/",
+   "https://optimism-mainnet.rpc.thyme.sh/public"
+  ]
+ },
+ {
+  "chain": "blast",
+  "id": 81457,
+  "compound": [
+   [
+    "blume-fm",
+    "comptroller",
+    "0x4EdF556c5664b4f86Ec50dB0F58B58B26210DC31",
+    false
+   ],
+   [
+    "asofinance",
+    "comptroller",
+    "0xD5e60A396842D6C1D5470E16DA0BfDbb7Ba47101",
+    false
+   ],
+   [
+    "0xLend",
+    "comptroller",
+    "0x1DD821C9E27fB2399DAb75AedB113c80C755DCa6",
+    false
+   ],
+   [
+    "novation",
+    "comptroller",
+    "0x3090Cd174218BB451C7865bDC621d47E1Bd6831C",
+    false
+   ],
+   [
+    "orbitlending-io",
+    "comptroller",
+    "0x1E18C3cb491D908241D0db14b081B51be7B6e652",
+    true
+   ],
+   [
+    "orbitlending-io",
+    "comptroller",
+    "0x273683CA19D9CF827628EE216E4a9604EfB077A3",
+    true
+   ],
+   [
+    "orbitlending-io",
+    "comptroller",
+    "0xe9266ae95bB637A7Ad598CB0390d44262130F433",
+    true
+   ],
+   [
+    "orbitlending-io",
+    "comptroller",
+    "0xfFF8Fc176697D04607cF4e23E91c65aeD1c3d3F5",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "zerolend",
+    "dataHelpers",
+    "0xc6DF4ddDBFaCb866e78Dcc01b813A41C15A08C10",
+    true
+   ],
+   [
+    "seismic",
+    "short",
+    "0xEEcA436A6d4AfF6f0d55d71e9B1C271AbF511Cd0",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/81457",
+   "https://blastl2-mainnet.public.blastapi.io",
+   "https://li-fi-blast.intustechno.workers.dev/rpc",
+   "https://rpc.ankr.com/blast",
+   "https://blast-rpc.publicnode.com",
+   "https://blast.drpc.org",
+   "https://blast.gateway.tenderly.co",
+   "https://rpc.owlracle.info/blast/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://blast-public.nodies.app",
+   "https://blast.therpc.io",
+   "https://blast.api.pocket.network",
+   "https://api-blast-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://blast-mainnet.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/blast"
+  ]
+ },
+ {
+  "chain": "sonic",
+  "id": 146,
+  "compound": [
+   [
+    "enclabs",
+    "comptroller",
+    "0xccAdFCFaa71407707fb3dC93D7d83950171aA2c9",
+    true
+   ],
+   [
+    "enclabs",
+    "comptroller",
+    "0x1db5134ee31278809b2d85fab2796141dbe0d041",
+    true
+   ],
+   [
+    "enclabs",
+    "comptroller",
+    "0x62c627e08f996d7d7563e135e527f422fee34786",
+    true
+   ],
+   [
+    "enclabs",
+    "comptroller",
+    "0x26190C71c27e089533186338d16abB2ba9528969",
+    true
+   ],
+   [
+    "enclabs",
+    "comptroller",
+    "0x0c9425eCFbd64a96D306f36e8281EE5308446d31",
+    true
+   ],
+   [
+    "machfi",
+    "comptroller",
+    "0x646F91AbD5Ab94B76d1F9C5D9490A2f6DDf25730",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0x1C6E9510055B71429022B997E6602FbaEEb0481F",
+    false
+   ],
+   [
+    "dtrinity-dlend",
+    "dataHelpers",
+    "0xB245F8321E7A4938DEf8bDb2D5E2E16481268c42",
+    false
+   ],
+   [
+    "magsinio",
+    "short",
+    "0x67389503F9EF03D5C10074dEfd96E18bc7755194",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/146",
+   "https://rpc.nodeflare.app/sonic/public",
+   "https://rpc.soniclabs.com",
+   "https://sonic.drpc.org",
+   "https://rpc.ankr.com/sonic_mainnet",
+   "https://sonic.api.onfinality.io/public",
+   "https://sonic.therpc.io",
+   "https://sonic-json-rpc.stakely.io/",
+   "https://sonic.api.pocket.network",
+   "https://api-sonic-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://sonic-mainnet.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/sonic",
+   "https://sonic-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "era",
+  "id": 324,
+  "compound": [
+   [
+    "basilisk",
+    "comptroller",
+    "0x4085f99720e699106bc483dAb6CAED171EdA8D15",
+    false
+   ],
+   [
+    "reactorfusion",
+    "comptroller",
+    "0x23848c28Af1C3AA7B999fA57e6b6E8599C17F3f2",
+    false
+   ],
+   [
+    "0xLend",
+    "comptroller",
+    "0x599bb9202EE2D2F95EDe9f88F622854f7ef2c371",
+    false
+   ],
+   [
+    "zkfox",
+    "comptroller",
+    "0xc3D157Ee5D602E9CEAF6eA4c15C9b52B313A1364",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0xddE4D098D9995B659724ae6d5E3FB9681Ac941B1",
+    false
+   ],
+   [
+    "zoro",
+    "comptroller",
+    "0x90f2810B85f02122159cB18f6abF2776a7Ca3152",
+    false
+   ],
+   [
+    "zoro",
+    "comptroller",
+    "0x410ffcC8f37dCb3116cA8F59B30CCbe4c60F2385",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "zerolend",
+    "dataHelpers",
+    "0xB73550bC1393207960A385fC8b34790e5133175E",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://rpc.hostdefi.com/api/rpc/zksync-era",
+   "https://lb.routeme.sh/rpc/evm/324",
+   "https://mainnet.era.zksync.io",
+   "https://li-fi-redirect.intustechno.workers.dev/rpc",
+   "https://go.getblock.io/f76c09905def4618a34946bf71851542",
+   "https://zksync.drpc.org",
+   "https://public.1rpc.io/zksync2-era",
+   "https://endpoints.omniatech.io/v1/zksync-era/mainnet/public",
+   "https://api.zan.top/zksync-mainnet",
+   "https://zksync.api.onfinality.io/public",
+   "https://rpc.ankr.com/zksync_era",
+   "https://zksync-era.api.pocket.network",
+   "https://api-zksync-era-mainnet-full.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://zksync-era.rpc.sentio.xyz",
+   "https://zksync-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "taiko",
+  "id": 167000,
+  "compound": [
+   [
+    "jax-protocol",
+    "comptroller",
+    "0x8D86d4070b9432863FE9522B2c931C410085E1d4",
+    false
+   ],
+   [
+    "minterest",
+    "comptroller",
+    "0xe56c0d4d6A08C05ec42E923EFd06497F115D4799",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "takoTako",
+    "registry",
+    "0xD07B62ee683267D4A884453eaE982A151653515E",
+    false
+   ],
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0x5EcDC2432ED77cD8E2cE6183712c5cc712c40ec0",
+    false
+   ],
+   [
+    "hana-finance",
+    "addressesProviderRegistry",
+    "0x47EC2cEF8468dbaC060410E2BDde35A3B8f725e5",
+    false
+   ],
+   [
+    "hana-finance",
+    "dataHelpers",
+    "0x9E3D95b518f68349464da1b6dbd0B94DB59addc1",
+    false
+   ],
+   [
+    "meridian-lend",
+    "addressesProviderRegistry",
+    "0x8Cf3E0e7aE4eB82237d0931388EA72D5649D76e0",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/167000",
+   "https://rpc.taiko.xyz",
+   "https://rpc.ankr.com/taiko",
+   "https://rpc.taiko.tools",
+   "https://taiko-mainnet.4everland.org/v1/37fa9972c1b1cd5fab542c7bdd4cde2f",
+   "https://taiko.drpc.org",
+   "https://taiko-mainnet.gateway.tenderly.co",
+   "https://taiko-json-rpc.stakely.io/",
+   "https://taiko.therpc.io",
+   "https://taiko.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/taiko",
+   "https://taiko.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "hemi",
+  "id": 43111,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0xB2fF02eEF85DC4eaE95Ab32AA887E0cC69DF8d8E",
+    false
+   ],
+   [
+    "zenolend",
+    "comptroller",
+    "0xc2C583093Af9241E17B2Ec51844154468D21bF6F",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x0F65a7fBCb69074cF8BE8De1E01Ef573da34bD59",
+    true
+   ],
+   [
+    "bnq",
+    "short",
+    "0xB3D711832d1cf0F03D34D74d8a560071d52319a3",
+    false
+   ],
+   [
+    "luckypeaches",
+    "dataHelpers",
+    "0x986b04d0a228b8cB81E236F9Add85e43758F21B2",
+    false
+   ],
+   [
+    "zerolend",
+    "dataHelpers",
+    "0x9698FdF843cbe4531610aC231B0047d9FFc13bC6",
+    true
+   ],
+   [
+    "lendOS",
+    "dataHelpers",
+    "0xfBF6Aab10f696F3BA098BBE4EA9CF2503FC0f358",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/43111",
+   "https://rpc.hemi.network/rpc",
+   "https://hemi.drpc.org"
+  ]
+ },
+ {
+  "chain": "hyperliquid",
+  "id": 999,
+  "compound": [],
+  "aave": [
+   [
+    "purrlend",
+    "poolDatas",
+    "0xa8Ca6a4A485485910aA4023b9963Dfd2f3A5aeb0",
+    true
+   ],
+   [
+    "ploutos",
+    "poolDatas",
+    "0x429e14fCa77b0eC3FAf32a65d09Da97e67E82826",
+    true
+   ],
+   [
+    "luckypeaches",
+    "dataHelpers",
+    "0x473f5e779b36DdC54f63107B255580Db049EFc5b",
+    false
+   ],
+   [
+    "hyperlend",
+    "addressesProviderRegistry",
+    "0x24E301BcBa5C098B3b41eA61a52bFe95Cb728b20",
+    false
+   ],
+   [
+    "hyperlend",
+    "dataHelpers",
+    "0x5481bf8d3946E6A3168640c1D7523eB59F055a29",
+    false
+   ],
+   [
+    "hypurrfi",
+    "dataHelpers",
+    "0x48684a2316eac7b458ad22c459e12eb1c0fa28c4",
+    false
+   ],
+   [
+    "primefi-xyz",
+    "addressesProviderRegistry",
+    "0x69A3c30A85aA1E22791466a08819c1080f0Aab7f",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/999",
+   "https://hyperevm.rpc.sentio.xyz",
+   "https://rpc.nodeflare.app/hl/public"
+  ]
+ },
+ {
+  "chain": "moonbeam",
+  "id": 1284,
+  "compound": [
+   [
+    "orbiter-one",
+    "comptroller",
+    "0x27DC3DAdBfb40ADc677A2D5ef192d40aD7c4c97D",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x5Ea2321aBFF78E81702cE877319cD775E0dc865B",
+    false
+   ],
+   [
+    "moonwell",
+    "comptroller",
+    "0x8E00D5e02E65A19337Cdba98bbA9F84d4186a180",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xeB2D3A9D962d89b4A9a34ce2bF6a2650c938e185",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0x0fAbd597BDecb0EEE1fDFc9B8458Fe1ed0E35028",
+    false
+   ],
+   [
+    "midas-capital",
+    "comptroller",
+    "0xCc248E6106CB7B05293eF027D5c1c05BF3E39F21",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1284",
+   "https://rpc.api.moonbeam.network",
+   "https://moonbeam.api.onfinality.io/public",
+   "https://moonbeam.unitedbloc.com",
+   "https://public.1rpc.io/glmr",
+   "https://moonbeam-rpc.dwellir.com",
+   "https://moonbeam.drpc.org",
+   "https://moonbeam.therpc.io",
+   "https://moonbeam-rpc.publicnode.com",
+   "https://endpoints.omniatech.io/v1/moonbeam/mainnet/public",
+   "https://moonbeam.public.curie.radiumblock.co/ws",
+   "https://moonbeam.drpc.org",
+   "https://rpc.poolz.finance/moonbeam",
+   "https://node.histori.xyz/moonbeam-mainnet/8ry9f6t9dct1se2hlagxnd9n2a",
+   "https://moonbeam.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/moonbeam"
+  ]
+ },
+ {
+  "chain": "aurora",
+  "id": 1313161554,
+  "compound": [
+   [
+    "wepiggy",
+    "comptroller",
+    "0xFfceAcfD39117030314A07b2C86dA36E51787948",
+    false
+   ],
+   [
+    "aurigami",
+    "comptroller",
+    "0x817af6cfAF35BdC1A634d6cC94eE9e4c68369Aeb",
+    false
+   ],
+   [
+    "bastion",
+    "comptroller",
+    "0x6De54724e128274520606f038591A00C5E94a1F6",
+    false
+   ],
+   [
+    "bastion",
+    "comptroller",
+    "0xA195b3d7AA34E47Fb2D2e5A682DF2d9EFA2daF06",
+    false
+   ],
+   [
+    "bastion",
+    "comptroller",
+    "0xe1cf09BDa2e089c63330F0Ffe3F6D6b790835973",
+    false
+   ],
+   [
+    "bastion",
+    "comptroller",
+    "0xE550A886716241AFB7ee276e647207D7667e1E79",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1313161554",
+   "https://mainnet.aurora.dev",
+   "https://public.1rpc.io/aurora",
+   "https://aurora.drpc.org",
+   "https://aurora-mainnet.gateway.tatum.io",
+   "https://endpoints.omniatech.io/v1/aurora/mainnet/public",
+   "https://rpc.owlracle.info/aurora/70d38ce1826c4a60bb2a8e05a6c8b20f"
+  ]
+ },
+ {
+  "chain": "xdai",
+  "id": 100,
+  "compound": [
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x6bb6ebCf3aC808E26545d59EA60F27A202cE8586",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "spark-fi",
+    "addressesProviderRegistry",
+    "0x49d24798d3b84965F0d1fc8684EF6565115e70c1",
+    false
+   ],
+   [
+    "spark-fi",
+    "dataHelpers",
+    "0x2a002054A06546bB5a264D57A81347e23Af91D18",
+    false
+   ],
+   [
+    "realtoken-rmm-v3",
+    "addressesProviderRegistry",
+    "0xC6c4b123e731819AC5f7F9E0fe3A118e9b1227Cd",
+    false
+   ],
+   [
+    "realtoken-rmm-v3",
+    "dataHelpers",
+    "0x11B45acC19656c6C52f93d8034912083AC7Dd756",
+    false
+   ],
+   [
+    "realtmarkets",
+    "addressesProviderRegistry",
+    "0xae6933231Fb83257696E29B050cA6068D6E6Cc84",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/100",
+   "https://rpc.gnosischain.com",
+   "https://xdai-archive.blockscout.com",
+   "https://gnosis-public.nodies.app",
+   "https://rpc.gnosis.gateway.fm",
+   "https://gnosis-mainnet.public.blastapi.io",
+   "https://rpc.ap-southeast-1.gateway.fm/v4/gnosis/non-archival/mainnet",
+   "https://gnosis.api.onfinality.io/public",
+   "https://gnosis.drpc.org",
+   "https://endpoints.omniatech.io/v1/gnosis/mainnet/public",
+   "https://gnosis-rpc.publicnode.com",
+   "https://public.1rpc.io/gnosis",
+   "https://gno-mainnet.gateway.tatum.io",
+   "https://gnosis.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/gnosis"
+  ]
+ },
+ {
+  "chain": "manta",
+  "id": 169,
+  "compound": [
+   [
+    "keom",
+    "comptroller",
+    "0x91e9e99AC7C39d5c057F83ef44136dFB1e7adD7d",
+    false
+   ],
+   [
+    "keom",
+    "comptroller",
+    "0xBAc1e5A0B14490Dd0b32fE769eb5637183D8655d",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x3413Dc597aE3bE40C6f10fC3D706b884eaCF470A",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x4e4b415F5aa78a44CE1fc259D2cEc47BF50A9216",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "zerolend",
+    "dataHelpers",
+    "0x67f93d36792c49a4493652B91ad4bD59f428AD15",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/169",
+   "https://pacific-rpc.manta.network/http",
+   "https://public.1rpc.io/manta",
+   "https://manta-pacific-gascap.calderachain.xyz/http",
+   "https://www.tencentcloud-rpc.com/v2/manta/manta-rpc",
+   "https://r1.pacific.manta.systems/http",
+   "https://manta-pacific.calderachain.xyz/http",
+   "https://manta-pacific.drpc.org",
+   "https://endpoints.omniatech.io/v1/manta-pacific/mainnet/public",
+   "https://manta-pacific-mainnet.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "scroll",
+  "id": 534352,
+  "compound": [
+   [
+    "rho-markets",
+    "comptroller",
+    "0x8a67AB98A291d1AEA2E1eB0a79ae4ab7f2D76041",
+    true
+   ],
+   [
+    "loanshark",
+    "comptroller",
+    "0xEFB0697700E5c489073a9BDF7EF94a2B2bc884a5",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "u235",
+    "addressesProviderRegistry",
+    "0xE58Ebf93885c8Ea0368fCe84aF79EC983b80c8D5",
+    false
+   ],
+   [
+    "u235",
+    "dataHelpers",
+    "0xeB3C203418f0cb55b351C3E45A5C4f47bE5DA77A",
+    false
+   ],
+   [
+    "lore",
+    "addressesProviderRegistry",
+    "0xBc6DE4458b7D6fbf82240ce8cC0CA6a2f4986eb5",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://rpc.hostdefi.com/api/rpc/scroll",
+   "https://lb.routeme.sh/rpc/evm/534352",
+   "https://rpc.scroll.io",
+   "https://rpc-scroll.icecreamswap.com",
+   "https://scroll-mainnet.public.blastapi.io/",
+   "https://public.1rpc.io/scroll",
+   "https://scroll.drpc.org",
+   "https://scroll.api.pocket.network",
+   "https://scroll.api.onfinality.io/public",
+   "https://scroll-public.nodies.app",
+   "https://endpoints.omniatech.io/v1/scroll/mainnet/public",
+   "https://rpc.ankr.com/scroll",
+   "https://scroll.therpc.io",
+   "https://scroll.api.pocket.network",
+   "https://api-scroll-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.swiftnodes.io/rpc/scroll",
+   "https://scroll.rpc.sentio.xyz",
+   "https://rpc-scroll.blockmachine.io"
+  ]
+ },
+ {
+  "chain": "moonriver",
+  "id": 1285,
+  "compound": [
+   [
+    "neku",
+    "comptroller",
+    "0xD5B649c7d27C13a2b80425daEe8Cb6023015Dc6B",
+    false
+   ],
+   [
+    "huckleberry-lending",
+    "comptroller",
+    "0xcffef313b69d83cb9ba35d9c0f882b027b846ddc",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x9a9b2bF1d1c96332C55d0B6aCb8C2B441381116d",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x7d166777bd19a916c2edf5f1fc1ec138b37e7391",
+    true
+   ],
+   [
+    "moonwell-apollo",
+    "comptroller",
+    "0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1285",
+   "https://rpc.api.moonriver.moonbeam.network",
+   "https://moonriver.api.onfinality.io/public",
+   "https://moonriver.unitedbloc.com",
+   "https://moonriver-rpc.dwellir.com",
+   "https://moonriver-rpc.publicnode.com",
+   "https://moonriver.drpc.org",
+   "https://rpc.owlracle.info/movr/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://moonriver.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/moonriver"
+  ]
+ },
+ {
+  "chain": "klaytn",
+  "id": 8217,
+  "compound": [
+   [
+    "donkey",
+    "comptroller",
+    "0x35dc04eE1D6E600C0d13B21FdfB5C83D022CEF25",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0xEE3Db1711ef46C04c448Cb9F5A03E64e7aa22814",
+    false
+   ],
+   [
+    "kilolend",
+    "comptroller",
+    "0x2591d179a0B1dB1c804210E111035a3a13c95a48",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "klaybank",
+    "registry",
+    "0x4B6Ece52D0EF60aE054f45c45D6bA4F7a0C2cC67",
+    false
+   ],
+   [
+    "rhombus",
+    "dataHelpers",
+    "0x3eFC37753ec2501b406F3443cFD8D406B52abEa6",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/8217",
+   "https://public-en.node.kaia.io",
+   "https://alpha-hardworking-orb.kaia-mainnet.quiknode.pro/",
+   "https://kaia.api.pocket.network",
+   "https://kaia-public.nodies.app",
+   "https://go.getblock.io/d7094dbd80ab474ba7042603fe912332",
+   "https://klaytn.api.onfinality.io/public",
+   "https://public.1rpc.io/klay",
+   "https://klaytn.drpc.org",
+   "https://rpc.ankr.com/kaia",
+   "https://kaia-mainnet.gateway.tatum.io/"
+  ]
+ },
+ {
+  "chain": "pulse",
+  "id": 369,
+  "compound": [],
+  "aave": [
+   [
+    "phiat",
+    "addressesProviderRegistry",
+    "0x9B979a359410544236343Dfa11b8e1401e4DdCd6",
+    false
+   ],
+   [
+    "betterbank",
+    "addressesProviderRegistry",
+    "0x21597Ae2f941b5022c6E72fd02955B7f3C87f4Cb",
+    false
+   ],
+   [
+    "betterbank",
+    "dataHelpers",
+    "0x2369cf50ee0e5727bd971c0d2d172ea6f376edaa",
+    false
+   ],
+   [
+    "betterlend",
+    "addressesProviderRegistry",
+    "0x6a52A961CF2241Cca78F8e5Fdc980a824afD6d8c",
+    false
+   ],
+   [
+    "betterlend",
+    "dataHelpers",
+    "0x1847a4e03D02cf2b86614153Eb76432fF499C732",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "core",
+  "id": 1116,
+  "compound": [
+   [
+    "aquarius-loan",
+    "comptroller",
+    "0x6056Eb6a5634468647B8cB892d3DaA5F816939FC",
+    true
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0x7f5a7aE2688A7ba6a9B36141335044c058a08b3E",
+    false
+   ],
+   [
+    "segment-finance",
+    "comptroller",
+    "0xaba65b87eBEdB2D753b37AeCECD1E168341eE0DD",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "dorian",
+    "registry",
+    "0x29604bF5D09bcb714D13549f98CC4Bb49c2Ff672",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1116",
+   "https://rpc.coredao.org",
+   "https://public.1rpc.io/core",
+   "https://rpc.ankr.com/core",
+   "https://core.drpc.org",
+   "https://api.zan.top/core-mainnet"
+  ]
+ },
+ {
+  "chain": "fantom",
+  "id": 250,
+  "compound": [
+   [
+    "olafinance",
+    "comptroller",
+    "0x892701d128d63c9856A9Eb5d967982F78FD3F2AE",
+    false
+   ],
+   [
+    "ironbank",
+    "comptroller",
+    "0x4250a6d3bd57455d7c6821eecb6206f507576cd2",
+    true
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x0f390559f258eb8591c8e31cf0905e97cf36ace2",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "the-granary",
+    "short",
+    "0x773E0277667F0c38d3Ca2Cf771b416bfd065da83",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/250",
+   "https://rpcapi.fantom.network",
+   "https://fantom-public.nodies.app",
+   "https://rpc.ftm.tools/",
+   "https://rpc.fantom.network",
+   "https://rpc2.fantom.network",
+   "https://rpc3.fantom.network",
+   "https://fantom-mainnet.public.blastapi.io",
+   "https://public.1rpc.io/ftm",
+   "https://fantom-rpc.publicnode.com",
+   "https://fantom.api.onfinality.io/public",
+   "https://fantom.drpc.org",
+   "https://fantom-mainnet.gateway.tatum.io",
+   "https://api.zan.top/ftm-mainnet",
+   "https://rpc.owlracle.info/ftm/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://fantom.api.pocket.network"
+  ]
+ },
+ {
+  "chain": "avax",
+  "id": 43114,
+  "compound": [
+   [
+    "traderjoe-lend",
+    "comptroller",
+    "0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC",
+    true
+   ],
+   [
+    "ironbank",
+    "comptroller",
+    "0x2eE80614Ccbc5e28654324a66A396458Fa5cD7Cc",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0xA5217D7cceAa7DCdcc613E88DcFc98A0f145b384",
+    true
+   ],
+   [
+    "the-granary",
+    "short",
+    "0xC043BA54F34C9fb3a0B45d22e2Ef1f171272Bc9D",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://xrpc.cl/avalanche",
+   "https://rpc.hostdefi.com/api/rpc/avalanche",
+   "https://lb.routeme.sh/rpc/evm/43114",
+   "https://rpc.nodeflare.app/avax/public",
+   "https://api.avax.network/ext/bc/C/rpc",
+   "https://avalanche.public-rpc.com",
+   "https://ava-mainnet.public.blastapi.io/ext/bc/C/rpc",
+   "https://avalancheapi.terminet.io/ext/bc/C/rpc",
+   "https://avalanche-c-chain-rpc.publicnode.com",
+   "https://public.1rpc.io/avax/c",
+   "https://avalanche-public.nodies.app/ext/bc/C/rpc",
+   "https://avalanche.api.onfinality.io/public/ext/bc/C/rpc",
+   "https://api.zan.top/avax-mainnet/ext/bc/C/rpc",
+   "https://avalanche.drpc.org",
+   "https://avax-x-mainnet.gateway.tatum.io",
+   "https://avalanche-mainnet.gateway.tenderly.co",
+   "https://rpc.owlracle.info/avax/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://spectrum-01.simplystaking.xyz/avalanche-mn-rpc/ext/bc/C/rpc",
+   "https://avax.api.pocket.network",
+   "https://avalanche.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/avalanche",
+   "https://avax-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "flare",
+  "id": 14,
+  "compound": [
+   [
+    "teralend",
+    "comptroller",
+    "0xEBf6ed25aB1F79B5C10C7145C5167367bE31651f",
+    true
+   ],
+   [
+    "kinetic",
+    "comptroller",
+    "0x8041680Fb73E1Fe5F851e76233DCDfA0f2D2D7c8",
+    false
+   ],
+   [
+    "kinetic",
+    "comptroller",
+    "0xDcce91d46Ecb209645A26B5885500127819BeAdd",
+    false
+   ],
+   [
+    "kinetic",
+    "comptroller",
+    "0x15F69897E6aEBE0463401345543C26d1Fd994abB",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/14",
+   "https://flare-mainnet.gateway.tatum.io/",
+   "https://flare.drpc.org"
+  ]
+ },
+ {
+  "chain": "fuse",
+  "id": 122,
+  "compound": [
+   [
+    "fusefi-lending",
+    "comptroller",
+    "0x26a562B713648d7F3D1E1031DCc0860A4F3Fa340",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "voltage-lending",
+    "short",
+    "0x87cB512CFB0f18F4Dd9652a186922cf6A4e63213",
+    false
+   ],
+   [
+    "meridian-lend",
+    "addressesProviderRegistry",
+    "0xbdD3d2f93cc1c6C951342C42Ef0795323CE83719",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/122",
+   "https://rpc.fuse.io",
+   "https://fuse-public.nodies.app",
+   "https://fuse-mainnet.chainstacklabs.com",
+   "https://fuse.liquify.com",
+   "https://fuse.drpc.org",
+   "https://rpc.owlracle.info/fuse/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://fuse.api.pocket.network"
+  ]
+ },
+ {
+  "chain": "bsquared",
+  "id": 223,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0xdD9C863197df28f47721107f94eb031b548B5e48",
+    false
+   ],
+   [
+    "segment-finance",
+    "comptroller",
+    "0x69a6B3B96b26a15A588081Df17F46d61f625741c",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x80E81348D9386Eb4d10c2A32A7458638cD3308dF",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/223",
+   "https://rpc.bsquared.network",
+   "https://b2-mainnet.alt.technology",
+   "https://mainnet.b2-rpc.com",
+   "https://b2-mainnet.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "op_bnb",
+  "id": 204,
+  "compound": [
+   [
+    "segment-finance",
+    "comptroller",
+    "0x71ac0e9A7113130280040d0189d0556f45a8CBB5",
+    false
+   ],
+   [
+    "venus",
+    "comptroller",
+    "0xd6e3e2a1d8d95cae355d15b3b9f8e5c2511874dd",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "kinza",
+    "addressesProviderRegistry",
+    "0xcf46F77cD75a17900d59676fBe4B88aAdcBA9533",
+    false
+   ],
+   [
+    "kinza",
+    "dataHelpers",
+    "0xBb5f2d30c0fC9B0f71f7B19DaF19e7Cf3D23eb5E",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/204",
+   "https://opbnb-mainnet-rpc.bnbchain.org",
+   "https://opbnb.drpc.org",
+   "https://opbnb-rpc.publicnode.com",
+   "https://public.1rpc.io/opbnb",
+   "https://opbnb-mainnet.4everland.org/v1/37fa9972c1b1cd5fab542c7bdd4cde2f",
+   "https://opbnb.api.pocket.network",
+   "https://api-opbnb-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.swiftnodes.io/rpc/opbnb"
+  ]
+ },
+ {
+  "chain": "bob",
+  "id": 60808,
+  "compound": [
+   [
+    "segment-finance",
+    "comptroller",
+    "0xcD7C4F508652f33295F0aEd075936Cd95A4D2911",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0xB7ed6c062caAaCb1A13f317E0A751289280FC306",
+    true
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x1e514767F5cFe1ddE599dd39a79666E3BeEAaf7d",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/60808",
+   "https://rpc.nodeflare.app/bob/public",
+   "https://rpc.gobob.xyz",
+   "https://bob.drpc.org",
+   "https://bob.gateway.tenderly.co",
+   "https://bob.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "mantle",
+  "id": 5000,
+  "compound": [
+   [
+    "minterest",
+    "comptroller",
+    "0xe53a90EFd263363993A3B41Aa29f7DaBde1a932D",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "lendle",
+    "registry",
+    "0x30D990834539E1CE8Be816631b73a534e5044856",
+    false
+   ],
+   [
+    "kinza",
+    "addressesProviderRegistry",
+    "0xad48812a9d81aCf8De5bfc93c7d6d7165920aBc2",
+    false
+   ],
+   [
+    "kinza",
+    "dataHelpers",
+    "0x18cc2c55b429EE08748951bBD33FF2e68c95ec38",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/5000",
+   "https://rpc.nodeflare.app/mantle/public",
+   "https://rpc.mantle.xyz",
+   "https://mantle-mainnet.public.blastapi.io",
+   "https://mantle-public.nodies.app",
+   "https://mantle-rpc.publicnode.com",
+   "https://mantle.drpc.org",
+   "https://public.1rpc.io/mantle",
+   "https://mantle.api.onfinality.io/public",
+   "https://api.zan.top/mantle-mainnet",
+   "https://endpoints.omniatech.io/v1/mantle/mainnet/public",
+   "https://rpc.owlracle.info/mantle/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://mantle.api.pocket.network",
+   "https://api-mantle-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.swiftnodes.io/rpc/mantle",
+   "https://rpc-mantle.blockmachine.io"
+  ]
+ },
+ {
+  "chain": "xdc",
+  "id": 50,
+  "compound": [
+   [
+    "paxo-finance",
+    "comptroller",
+    "0x301C76e7b60e9824E32991B8F29e1c4a03B4F65b",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "fathom-lending",
+    "addressesProviderRegistry",
+    "0xDAb3B99eb3569466750c436d6F4c99d57850Cc89",
+    false
+   ],
+   [
+    "fathom-lending",
+    "dataHelpers",
+    "0x7fa488a5C88E9E35B0B86127Ec76B0c1F0933191",
+    false
+   ],
+   [
+    "primefi-xyz",
+    "addressesProviderRegistry",
+    "0xBfeE735e3868f8990787CCEAA4B920C9Ed162b07",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/50",
+   "https://rpc.xdcrpc.com",
+   "https://rpc1.xinfin.network",
+   "https://erpc.xinfin.network",
+   "https://erpc.xdcrpc.com",
+   "https://rpc.xdc.org",
+   "https://rpc.xdc.network",
+   "https://earpc.xinfin.network/",
+   "https://erpc.xinfin.network/",
+   "https://rpc.ankr.com/xdc",
+   "https://xdc-mainnet.gateway.tatum.io",
+   "https://api-xdc-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://rpc.plugin.global/xdcmainnet"
+  ]
+ },
+ {
+  "chain": "cronos",
+  "id": 25,
+  "compound": [
+   [
+    "tectonic",
+    "comptroller",
+    "0xb3831584acb95ed9ccb0c11f677b5ad01deaeec0",
+    true
+   ],
+   [
+    "tectonic",
+    "comptroller",
+    "0x8312A8d5d1deC499D00eb28e1a2723b13aA53C1e",
+    false
+   ],
+   [
+    "tectonic",
+    "comptroller",
+    "0x7E0067CEf1e7558daFbaB3B1F8F6Fa75Ff64725f",
+    false
+   ],
+   [
+    "mimas-finance",
+    "comptroller",
+    "0xdD8c94211dD19155EFFbd57EAb6D4e0DE31A3b9E",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/25",
+   "https://rpc.nodeflare.app/cronos/public",
+   "https://evm.cronos.org",
+   "https://cronos-rpc.elk.finance/",
+   "https://cronos-evm-rpc.publicnode.com",
+   "https://public.1rpc.io/cro",
+   "https://cronos.drpc.org",
+   "https://rpc.vvs.finance",
+   "https://mmf-rpc.xstaking.sg",
+   "https://rpc.nebkas.ro",
+   "https://endpoints.omniatech.io/v1/cronos/mainnet/public",
+   "https://rpc.owlracle.info/cro/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://cro-mainnet.gateway.tatum.io/",
+   "https://api-cronos-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://cronos.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/cronos"
+  ]
+ },
+ {
+  "chain": "metis",
+  "id": 1088,
+  "compound": [
+   [
+    "bencu",
+    "comptroller",
+    "0xC5986Df018D1ff8ecA79fd3f266428616617cDF3",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "the-granary",
+    "short",
+    "0x37133A8dCA96400c249102E59B11e25b0F663Ee0",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1088",
+   "https://andromeda.metis.io/?owner=1088",
+   "https://metis-mainnet.public.blastapi.io",
+   "https://metis.api.onfinality.io/public",
+   "https://metis-public.nodies.app",
+   "https://metis.drpc.org",
+   "https://metis-andromeda.rpc.thirdweb.com/",
+   "https://metis-andromeda.gateway.tenderly.co",
+   "https://api.blockeden.xyz/metis/67nCBdZQSH9z3YqDDjdm",
+   "https://rpc.swiftnodes.io/rpc/metis"
+  ]
+ },
+ {
+  "chain": "monad",
+  "id": 143,
+  "compound": [
+   [
+    "quantus",
+    "comptroller",
+    "0xFc57bF0733e5e65d8549fc2922919Cfb97e62D5f",
+    true
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0x2d9b96648C784906253c7FA94817437EF59Cf226",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "k613",
+    "dataHelpers",
+    "0xfc87bE7f3657AAD69baDb6247A88E924D1F8bc53",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/143",
+   "https://monad-mainnet.api.onfinality.io/public",
+   "https://monad-mainnet.drpc.org",
+   "https://monad-mainnet-rpc.spidernode.net/",
+   "https://infra.originstake.com/monad/evm",
+   "https://monad-mainnet.gateway.tatum.io",
+   "https://monad-mainnet.rpc.sentio.xyz",
+   "https://monad-rpc.huginn.tech",
+   "https://gm.monad.at.htw.tech",
+   "https://rpc.swiftnodes.io/rpc/monad"
+  ]
+ },
+ {
+  "chain": "sei",
+  "id": 1329,
+  "compound": [
+   [
+    "takara",
+    "comptroller",
+    "0x71034bf5eC0FAd7aEE81a213403c8892F3d8CAeE",
+    false
+   ],
+   [
+    "kawa",
+    "comptroller",
+    "0xD527237E176647cbF8A7c7bCeFEfBf9130Bec948",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0x5EcDC2432ED77cD8E2cE6183712c5cc712c40ec0",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1329",
+   "https://evm-rpc.sei-apis.com",
+   "https://sei.drpc.org",
+   "https://sei-evm-rpc.stakeme.pro",
+   "https://sei-public.nodies.app",
+   "https://sei.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/sei"
+  ]
+ },
+ {
+  "chain": "kava",
+  "id": 2222,
+  "compound": [
+   [
+    "hover",
+    "comptroller",
+    "0x3A4Ec955a18eF6eB33025599505E7d404a4d59eC",
+    false
+   ],
+   [
+    "filda",
+    "comptroller",
+    "0xD2CBE89a36df2546eebc71766264e0F306d38196",
+    false
+   ],
+   [
+    "mare-finance-v2",
+    "comptroller",
+    "0xFcD7D41D5cfF03C7f6D573c9732B0506C72f5C72",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2222",
+   "https://evm.kava.io",
+   "https://kava.api.onfinality.io/public",
+   "https://kava-evm-rpc.publicnode.com",
+   "https://kava-public.nodies.app",
+   "https://evm.kava.chainstacklabs.com",
+   "https://rpc.ankr.com/kava_evm",
+   "https://evm.kava-rpc.com",
+   "https://kava.drpc.org",
+   "https://kava.therpc.io",
+   "https://kava.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/kava"
+  ]
+ },
+ {
+  "chain": "btr",
+  "id": 200901,
+  "compound": [
+   [
+    "enzo",
+    "comptroller",
+    "0xe688a4a94AD1D32CD52A01306fc0a9552749F322",
+    false
+   ],
+   [
+    "trustin",
+    "comptroller",
+    "0xF2EBc006a55ADFb3f50A521E5Db848942e7Dbb1F",
+    false
+   ],
+   [
+    "sumer",
+    "comptroller",
+    "0xAbcdc5827f92525F56004540459045Ec3e432ebF",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/200901",
+   "https://rpc.bitlayer.org",
+   "https://rpc.ankr.com/bitlayer"
+  ]
+ },
+ {
+  "chain": "zircuit",
+  "id": 48900,
+  "compound": [
+   [
+    "elara",
+    "comptroller",
+    "0x695aCEf58D1a10Cf13CBb4bbB2dfB7eDDd89B296",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0x5EcDC2432ED77cD8E2cE6183712c5cc712c40ec0",
+    false
+   ],
+   [
+    "zerolend",
+    "dataHelpers",
+    "0xA754b2f1535287957933db6e2AEE2b2FE6f38588",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/48900",
+   "https://rpc.nodeflare.app/zircuit/public",
+   "https://mainnet.zircuit.com",
+   "https://zircuit.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "iotex",
+  "id": 4689,
+  "compound": [
+   [
+    "basic",
+    "comptroller",
+    "0x47D7B83947Aa12fEb95f5f55527Dc9B32E4ec009",
+    false
+   ],
+   [
+    "filda",
+    "comptroller",
+    "0x55E5F6E48FD4715e1c05b9dAfa5CfD0B387425Ee",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0xDB52DD393e3a5e95d3B7C7e1C42cC06bb807A369",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/4689",
+   "https://babel-api.mainnet.iotex.io",
+   "https://babel-api.mainnet.iotex.one",
+   "https://babel-api.fastblocks.io",
+   "https://rpc.depinscan.io/iotex",
+   "https://iotexrpc.com",
+   "https://iotex-network.rpc.thirdweb.com",
+   "https://iotex.api.onfinality.io/public",
+   "https://api-iotex-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c"
+  ]
+ },
+ {
+  "chain": "mode",
+  "id": 34443,
+  "compound": [
+   [
+    "netweave-lending",
+    "comptroller",
+    "0x86112d3176c537B953560EA6fE43f79382E7bffE",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "molend",
+    "short",
+    "0xB6796E12ADC78993DB1a33Cedbc459a4A848ED69",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/34443",
+   "https://rpc.nodeflare.app/mode/public",
+   "https://mainnet.mode.network",
+   "https://public.1rpc.io/mode",
+   "https://mode.drpc.org",
+   "https://mode.gateway.tenderly.co",
+   "https://mode-mainnet.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "linea",
+  "id": 59144,
+  "compound": [
+   [
+    "mendi-finance",
+    "comptroller",
+    "0x1b4d3b0421dDc1eB216D230Bc01527422Fb93103",
+    false
+   ],
+   [
+    "paxo-finance",
+    "comptroller",
+    "0x301C76e7b60e9824E32991B8F29e1c4a03B4F65b",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "mooncakefi",
+    "dataHelpers",
+    "0x593C2d762B1CDe79101D946Ca7816eeaF17Ad744",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/59144",
+   "https://rpc.nodeflare.app/linea/public",
+   "https://rpc.linea.build",
+   "https://public.1rpc.io/linea",
+   "https://linea.drpc.org",
+   "https://linea.decubate.com",
+   "https://rpc.owlracle.info/linea/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://linea.therpc.io",
+   "https://linea.api.pocket.network",
+   "https://api-linea-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://linea-rpc.publicnode.com",
+   "https://linea.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/linea"
+  ]
+ },
+ {
+  "chain": "heco",
+  "id": 128,
+  "compound": [
+   [
+    "filda",
+    "comptroller",
+    "0xb74633f2022452f377403B638167b0A135DB096d",
+    false
+   ],
+   [
+    "wepiggy",
+    "comptroller",
+    "0x3401D01E31BB6DefcFc7410c312C0181E19b9dd5",
+    false
+   ],
+   [
+    "demeter",
+    "comptroller",
+    "0x3632E78219227b172F0aaF56F92FB08D87C94379",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://http-mainnet.hecochain.com",
+   "https://http-mainnet-node.huobichain.com",
+   "https://hecoapi.terminet.io/rpc",
+   "https://heco.drpc.org"
+  ]
+ },
+ {
+  "chain": "oasis",
+  "id": 42262,
+  "compound": [
+   [
+    "wepiggy",
+    "comptroller",
+    "0x5Ea2321aBFF78E81702cE877319cD775E0dc865B",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "ssap",
+    "addressesProviderRegistry",
+    "0xBB4dfd53BA393DCD1AD1e30809C9527e9a00d522",
+    false
+   ],
+   [
+    "ssap",
+    "dataHelpers",
+    "0x2b8DD6DE52F20EfA309BC56454b7A929B7a1E66D",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/42262",
+   "https://emerald.oasis.io",
+   "https://public.1rpc.io/oasis/emerald",
+   "https://oasis-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "morph",
+  "id": 2818,
+  "compound": [
+   [
+    "minterest",
+    "comptroller",
+    "0x121D54E653a63D90569813E7c6a4C5E6084ff7DE",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "quokkalend",
+    "addressesProviderRegistry",
+    "0x8C28AAA6c07c6c4e3E68B2e426C847614A9c0Dea",
+    false
+   ],
+   [
+    "quokkalend",
+    "dataHelpers",
+    "0x367ab6F3e883617f8385Eb5eA9d6e41A6e5c0D35",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2818",
+   "https://rpc.morphl2.io",
+   "https://rpc-quicknode.morphl2.io",
+   "https://morph.drpc.org"
+  ]
+ },
+ {
+  "chain": "robinhood",
+  "id": 4663,
+  "compound": [
+   [
+    "kyros-finance",
+    "comptroller",
+    "0x5f3Da5a8bCF26011e95CA2D03aFc6E0C54D4F0c9",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "zona",
+    "poolDatas",
+    "0x3e477EE4B379d212B0833Af7441763355D4A1724",
+    false
+   ],
+   [
+    "kaskad",
+    "poolDatas",
+    "0x9ff935c295925540077416042E3A0e1bE5276401",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://rpc.mainnet.chain.robinhood.com",
+   "https://robinhood.rpc.blxrbdn.com",
+   "https://robinhood-rpc.publicnode.com",
+   "https://robinhood.api.pocket.network",
+   "https://lb.routeme.sh/rpc/evm/4663",
+   "https://rpc.nodeflare.app/robinhood/public",
+   "https://rpc.degenprotocol.io/robinhood",
+   "https://rpc-robinhood.blockmachine.io",
+   "https://rpc-robinhood.globalstake.io",
+   "https://robinhood-mainnet.gateway.tatum.io",
+   "https://robinhood.daybreak-rpc.network"
+  ]
+ },
+ {
+  "chain": "megaeth",
+  "id": 4326,
+  "compound": [
+   [
+    "quantus",
+    "comptroller",
+    "0x1F1416EbbeAb7a13fC5B6111A1E77696Be600413",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "purrlend",
+    "poolDatas",
+    "0xfCaE4E9Acb1E5C78aa699d43c5cc0eAC5399E754",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/4326",
+   "https://rpc-megaeth-mainnet.globalstake.io/",
+   "https://megaeth.drpc.org",
+   "https://megaeth.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "plasma",
+  "id": 9745,
+  "compound": [
+   [
+    "enclabs",
+    "comptroller",
+    "0xA3F48548562A30A33257A752d396A20B4413E8E3",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x9C48A6D3e859ab124A8873D73b2678354D0B4c0A",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/9745",
+   "https://rpc.nodeflare.app/plasma/public",
+   "https://plasma.drpc.org",
+   "https://plasma.api.onfinality.io/public",
+   "https://rpc.swiftnodes.io/rpc/plasma",
+   "https://plasma-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "kcc",
+  "id": 321,
+  "compound": [
+   [
+    "torches",
+    "comptroller",
+    "0xfbAFd34A4644DC4f7c5b2Ae150279162Eb2B0dF6",
+    false
+   ],
+   [
+    "0xLend",
+    "comptroller",
+    "0x337d8719f70D514367aBe780F7c1eAd1c0113Bc7",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/321",
+   "https://rpc-mainnet.kcc.network",
+   "https://kcc.mytokenpocket.vip",
+   "https://kcc-rpc.com",
+   "https://services.tokenview.io/vipapi/nodeservice/kcs?apikey=qVHq2o6jpaakcw3lRstl",
+   "https://kcs-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "evmos",
+  "id": 9001,
+  "compound": [
+   [
+    "coslend",
+    "comptroller",
+    "0x5b32B588Af5F99F4e5c4038dDE6BDD991024F650",
+    false
+   ],
+   [
+    "tashi",
+    "comptroller",
+    "0x053841Bd1D291380726a007eA834Ecd296923260",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/9001",
+   "https://evmos.lava.build",
+   "https://evmos-mainnet.public.blastapi.io",
+   "https://evmos-evm-rpc.publicnode.com",
+   "https://jsonrpc-evmos.goldenratiostaking.net",
+   "https://evmos-jsonrpc.cyphercore.io",
+   "https://evmos.drpc.org",
+   "https://eth.bd.evmos.org:8545/",
+   "https://jsonrpc-evmos-ia.cosmosia.notional.ventures",
+   "https://json-rpc.evmos.blockhunters.org",
+   "https://evmos-json-rpc.agoranodes.com",
+   "https://evmos-json.antrixy.org",
+   "https://jsonrpc.evmos.nodestake.top",
+   "https://evmos-jsonrpc.alkadeta.com",
+   "https://evmos-json.qubelabs.io",
+   "https://evmos-rpc.theamsolutions.info",
+   "https://evmos-api.theamsolutions.info",
+   "https://evmos-jsonrpc.theamsolutions.info",
+   "https://evm-rpc-evmos.hoodrun.io",
+   "https://evmos-json-rpc.0base.dev",
+   "https://json-rpc.evmos.tcnetwork.io",
+   "https://rpc-evm.evmos.dragonstake.io",
+   "https://evmosevm.rpc.stakin-nodes.com",
+   "https://evmos-jsonrpc.stake-town.com",
+   "https://json-rpc-evmos.mainnet.validatrium.club",
+   "https://rpc-evmos.imperator.co",
+   "https://evm-rpc.evmos.silentvalidator.com",
+   "https://alphab.ai/rpc/eth/evmos",
+   "https://evmos-jsonrpc.kalia.network",
+   "https://jsonrpc-evmos.mzonder.com",
+   "https://evmos.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/evmos"
+  ]
+ },
+ {
+  "chain": "telos",
+  "id": 40,
+  "compound": [
+   [
+    "reactorfusion",
+    "comptroller",
+    "0x19646a04BfDcf3553Adc8fAAf8B16D76EC41E494",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "meridian-lend",
+    "addressesProviderRegistry",
+    "0xb84171C0824B4F3C0B415706C99A4A8ED5779b75",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/40",
+   "https://rpc.telos.net",
+   "https://public.1rpc.io/telos/evm",
+   "https://telos.drpc.org",
+   "https://rpc.ankr.com/telos"
+  ]
+ },
+ {
+  "chain": "iotaevm",
+  "id": 8822,
+  "compound": [
+   [
+    "deepr-finance",
+    "comptroller",
+    "0xee07121d97FDEA35675e02017837a7a43aeDa48F",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "iolend",
+    "short",
+    "0xA9Bb7ebb4F51B0e0BbD0FaE640e32298a0Bcf4A5",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/8822",
+   "https://json-rpc.evm.iotaledger.net",
+   "https://iota-mainnet-evm.public.blastapi.io",
+   "https://rpc.ankr.com/iota_evm",
+   "https://iota-mainnet.gateway.tatum.io/"
+  ]
+ },
+ {
+  "chain": "rsk",
+  "id": 30,
+  "compound": [
+   [
+    "tropykus",
+    "comptroller",
+    "0x962308fEf8edFaDD705384840e7701F8f39eD0c0",
+    false
+   ],
+   [
+    "segment-finance",
+    "comptroller",
+    "0x2eea8fbA494d5008ba72f80E0091Cc74dB5f9926",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/30",
+   "https://mycrypto.rsk.co",
+   "https://public-node.rsk.co",
+   "https://rootstock.drpc.org",
+   "https://rootstock-mainnet.public.blastapi.io",
+   "https://rsk-mainnet.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "meter",
+  "id": 82,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0xcB4cdDA50C1B6B0E33F544c98420722093B7Aa88",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "meridian-lend",
+    "addressesProviderRegistry",
+    "0x64Be9ee529E555860DA0705819138F41247e76E6",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/82",
+   "https://rpc.meter.io"
+  ]
+ },
+ {
+  "chain": "zklink",
+  "id": 810180,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0xe6099D924efEf37845867D45E3362731EaF8A98D",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x89e348e0ab4D83aEDbf1354004552822a805a12e",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/810180"
+  ]
+ },
+ {
+  "chain": "neon_evm",
+  "id": null,
+  "compound": [
+   [
+    "lumen-money",
+    "comptroller",
+    "0x252dBa92827744e6d2b01f1c9D77dcD3CBAb4573",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "lendOS",
+    "dataHelpers",
+    "0x3A1ca459F21D8FAcF9A30bC4773f5dBf07C1191d",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "harmony",
+  "id": 1666600000,
+  "compound": [
+   [
+    "wepiggy",
+    "comptroller",
+    "0xaa87715E858b482931eB2f6f92E504571588390b",
+    false
+   ],
+   [
+    "hundredfinance",
+    "comptroller",
+    "0x0f390559f258eb8591c8e31cf0905e97cf36ace2",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1666600000",
+   "https://api.harmony.one",
+   "https://a.api.s0.t.hmny.io",
+   "https://api.s0.t.hmny.io",
+   "https://public.1rpc.io/one",
+   "https://endpoints.omniatech.io/v1/harmony/mainnet-0/public",
+   "https://harmony-0.drpc.org",
+   "https://rpc.owlracle.info/one/70d38ce1826c4a60bb2a8e05a6c8b20f",
+   "https://harmony.api.pocket.network",
+   "https://one-mainnet-s0.gateway.tatum.io"
+  ]
+ },
+ {
+  "chain": "wemix",
+  "id": 1111,
+  "compound": [
+   [
+    "wemix-lend",
+    "comptroller",
+    "0x929620a759a564e3C273e8a4efCDa5806da168F2",
+    false
+   ],
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0xBA5E3f89f57342D94333C682e159e68Ee1Fc64De",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1111",
+   "https://api.wemix.com",
+   "https://wemix.drpc.org"
+  ]
+ },
+ {
+  "chain": "canto",
+  "id": 7700,
+  "compound": [
+   [
+    "vivacity",
+    "comptroller",
+    "0xe49627059Dd2A0fba4A81528207231C508d276CB",
+    false
+   ],
+   [
+    "canto-lending",
+    "comptroller",
+    "0x5E23dC409Fc2F832f83CEc191E245A191a4bCc5C",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/7700",
+   "https://canto.gravitychain.io/",
+   "https://canto.evm.chandrastation.com/",
+   "https://jsonrpc.canto.nodestake.top/",
+   "https://canto.dexvaults.com/",
+   "https://canto-rpc.ansybl.io",
+   "https://canto.dexrouting.com"
+  ]
+ },
+ {
+  "chain": "unichain",
+  "id": 130,
+  "compound": [
+   [
+    "venus",
+    "comptroller",
+    "0xe22af1e6b78318e1Fe1053Edbd7209b8Fc62c4Fe",
+    false
+   ],
+   [
+    "zenolend",
+    "comptroller",
+    "0x086036b34689709cFAe75dfC453846b744bD8dcA",
+    true
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/130",
+   "https://rpc.nodeflare.app/unichain/public",
+   "https://mainnet.unichain.org/",
+   "https://unichain.api.onfinality.io/public",
+   "https://unichain-rpc.publicnode.com",
+   "https://unichain.drpc.org",
+   "https://unichain.therpc.io",
+   "https://unichain-mainnet.gateway.tatum.io/",
+   "https://api-unichain-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://unichain-mainnet.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/unichain"
+  ]
+ },
+ {
+  "chain": "apechain",
+  "id": 33139,
+  "compound": [
+   [
+    "zenolend",
+    "comptroller",
+    "0xc2C583093Af9241E17B2Ec51844154468D21bF6F",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "apebank",
+    "short",
+    "0xEeec4D3C3aa8B4B2589b6a076717e5B045f7F0E9",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/33139",
+   "https://rpc.apechain.com",
+   "https://apechain.drpc.org"
+  ]
+ },
+ {
+  "chain": "soneium",
+  "id": 1868,
+  "compound": [
+   [
+    "zenolend",
+    "comptroller",
+    "0x5075A7E2B018f352220874718E3f5Bd38C6DFD5D",
+    true
+   ]
+  ],
+  "aave": [
+   [
+    "sake-finance",
+    "short",
+    "0x2BECa16DAa6Decf9C6F85eBA8F0B35696A3200b3",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1868",
+   "https://rpc.nodeflare.app/soneium/public",
+   "https://rpc.soneium.org",
+   "https://soneium.drpc.org",
+   "https://soneium-mainnet.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/soneium"
+  ]
+ },
+ {
+  "chain": "sty",
+  "id": 1514,
+  "compound": [
+   [
+    "zenolend",
+    "comptroller",
+    "0x5075A7E2B018f352220874718E3f5Bd38C6DFD5D",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "unleash",
+    "registry",
+    "0xC62Af8aa9E2358884B6e522900F91d3c924e1b38",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1514",
+   "https://mainnet.datarpc.io",
+   "https://mainnet.storyrpc.io",
+   "https://evm-rpc.story.mainnet.dteam.tech",
+   "https://infra.originstake.com/story/evm",
+   "https://story-mainnet-evm.itrocket.net",
+   "https://evm-rpc-story.j-node.net",
+   "https://story-evm-rpc.krews.xyz",
+   "https://evmrpc.story.nodestake.org",
+   "https://evm-rpc.story.silentvalidator.com",
+   "https://story-mainnet-evmrpc.mandragora.io",
+   "https://rpc-storyevm.aldebaranode.xyz",
+   "https://rpc.ankr.com/story_mainnet",
+   "https://story-json-rpc.stakely.io/",
+   "https://rpc.swiftnodes.io/rpc/story"
+  ]
+ },
+ {
+  "chain": "merlin",
+  "id": 4200,
+  "compound": [
+   [
+    "mage",
+    "comptroller",
+    "0xCE3bcCd2b0A457782f79000Be1b534C04B3F5aDD",
+    false
+   ],
+   [
+    "mage",
+    "comptroller",
+    "0xe7464Caa3fD31A1A8B458a634e72F94A00695d17",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/4200",
+   "https://rpc.merlinchain.io",
+   "https://merlin.blockpi.network/v1/rpc/public",
+   "https://rpc-merlin.rockx.com",
+   "https://endpoints.omniatech.io/v1/merlin/mainnet/public",
+   "https://endpoints.omniatech.io/v1/merlin/mainnet/public",
+   "https://merlin.drpc.org"
+  ]
+ },
+ {
+  "chain": "polygon_zkevm",
+  "id": 1101,
+  "compound": [
+   [
+    "keom",
+    "comptroller",
+    "0x6EA32f626e3A5c41547235ebBdf861526e11f482",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "tropykus-zkevm",
+    "short",
+    "0x4Dac514F520D051551372d277d1b2Fa3cF2AfdFF",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1101",
+   "https://rpc.polygon-zkevm.gateway.fm",
+   "https://public.1rpc.io/polygon/zkevm",
+   "https://polygon-zkevm-mainnet.public.blastapi.io",
+   "https://polygon-zkevm.drpc.org",
+   "https://polygon-zkevm-public.nodies.app",
+   "https://endpoints.omniatech.io/v1/polygon-zkevm/mainnet/public",
+   "https://node.histori.xyz/polygon-zkevm-mainnet/8ry9f6t9dct1se2hlagxnd9n2a",
+   "https://poly-zkevm.api.pocket.network"
+  ]
+ },
+ {
+  "chain": "wan",
+  "id": 888,
+  "compound": [
+   [
+    "wanlend",
+    "comptroller",
+    "0x21c72522005ccf570f40acaa04b448918aecc2ad",
+    true
+   ],
+   [
+    "wanlend",
+    "comptroller",
+    "0xd6980C52C20Fb106e54cC6c8AE04c089C3F6B9d6",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/888",
+   "https://gwan-ssl.wandevs.org:56891",
+   "https://gwan2-ssl.wandevs.org"
+  ]
+ },
+ {
+  "chain": "ink",
+  "id": 57073,
+  "compound": [
+   [
+    "xpert",
+    "comptroller",
+    "0x4f3b08B7FE4E14f728d084850A7B9CFF2E759Eb7",
+    false
+   ]
+  ],
+  "aave": [
+   [
+    "tydro",
+    "short",
+    "0x96086C25d13943C80Ff9a19791a40Df6aFC08328",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/57073",
+   "https://rpc.nodeflare.app/ink/public",
+   "https://rpc-gel.inkonchain.com",
+   "https://rpc-qnd.inkonchain.com",
+   "https://ink.drpc.org",
+   "https://ink-public.nodies.app",
+   "https://ink.api.pocket.network",
+   "https://ink-rpc.publicnode.com"
+  ]
+ },
+ {
+  "chain": "bitkub",
+  "id": 96,
+  "compound": [
+   [
+    "kinetixdao",
+    "comptroller",
+    "0xc5DD9f1cE32f19C0a76a924F681914A8D10E8008",
+    false
+   ],
+   [
+    "kilolend",
+    "comptroller",
+    "0x42f098E6aE5e81f357D3fD6e104BAA77A195133A",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/96",
+   "https://rpc.bitkubchain.io"
+  ]
+ },
+ {
+  "chain": "abstract",
+  "id": 2741,
+  "compound": [],
+  "aave": [
+   [
+    "kittypunch-kona-lend",
+    "short",
+    "0xDfc422c8793864ecD12Bc59F2024614034BcB078",
+    false
+   ],
+   [
+    "zerolend",
+    "dataHelpers",
+    "0x8EEAE4dD40EBee7Bb6471c47d4d867539CF53ccF",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2741",
+   "https://api.mainnet.abs.xyz",
+   "https://abstract.drpc.org",
+   "https://abstract.api.onfinality.io/public",
+   "https://abstract-mainnet.gateway.tatum.io/"
+  ]
+ },
+ {
+  "chain": "pharos",
+  "id": 1672,
+  "compound": [],
+  "aave": [
+   [
+    "zona",
+    "poolDatas",
+    "0xA91424C666193C2b2fb684E25dEadf03B333f49A",
+    false
+   ],
+   [
+    "openfi",
+    "poolDatas",
+    "0x3EF4724f0f2fabfA0ba96AfC711D64e6BE3367Fb",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://infra.originstake.com/pharos/evm",
+   "https://pharos.drpc.org"
+  ]
+ },
+ {
+  "chain": "corn",
+  "id": 21000000,
+  "compound": [],
+  "aave": [
+   [
+    "avalon-finance-usdalend",
+    "dataHelpers",
+    "0xa15c0c3D6Ad3FeE623BEd68391923c9Ff79a50c3",
+    false
+   ],
+   [
+    "zerolend",
+    "dataHelpers",
+    "0x2f7e54ff5d45f77bFfa11f2aee67bD7621Eb8a93",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/21000000",
+   "https://mainnet.corn-rpc.com",
+   "https://rpc.ankr.com/corn_maizenet",
+   "https://maizenet-rpc.usecorn.com"
+  ]
+ },
+ {
+  "chain": "clv",
+  "id": 1024,
+  "compound": [],
+  "aave": [
+   [
+    "ssap",
+    "addressesProviderRegistry",
+    "0x070CaAeac85CCaA7E8DCd88421904C2259Abed34",
+    false
+   ],
+   [
+    "ssap",
+    "dataHelpers",
+    "0x49617386d6aAaA6aE23c0E7799B5c4F79f33f1B1",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "haven1",
+  "id": 8811,
+  "compound": [],
+  "aave": [
+   [
+    "haven1-hlend",
+    "addressesProviderRegistry",
+    "0x989CdA7ea2953F9AF743C7cc51B8fA71d156aE27",
+    false
+   ],
+   [
+    "haven1-hlend",
+    "dataHelpers",
+    "0x91e097513f45D4aA93E6acBa20272AA769fa9D27",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "mezo",
+  "id": 31612,
+  "compound": [],
+  "aave": [
+   [
+    "bitfire",
+    "addressesProviderRegistry",
+    "0xD489a9cc2eF0b990c6a30Ed9AfF6EC63A2765F25",
+    false
+   ],
+   [
+    "bitfire",
+    "dataHelpers",
+    "0xBB7cF099BAfc69a30D4f21878F2FE3Ac10e768fA",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/31612",
+   "https://mezo.drpc.org"
+  ]
+ },
+ {
+  "chain": "fraxtal",
+  "id": 252,
+  "compound": [],
+  "aave": [
+   [
+    "dtrinity-dlend",
+    "dataHelpers",
+    "0xFB3adf4c845fD6352D24F3F0981eb7954401829c",
+    false
+   ],
+   [
+    "glyph-fi",
+    "short",
+    "0xcD0c5BA79018F37898A58eF56d197828d84f36Ad",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/252",
+   "https://rpc.frax.com",
+   "https://fraxtal.drpc.org",
+   "https://fraxtal.gateway.tenderly.co",
+   "https://fraxtal.api.pocket.network",
+   "https://rpc.swiftnodes.io/rpc/fraxtal",
+   "https://frax-mainnet.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "etlk",
+  "id": 42793,
+  "compound": [],
+  "aave": [
+   [
+    "superlend",
+    "addressesProviderRegistry",
+    "0xEcbDd440C7a929d7524784Af634dF9EB0747b9e7",
+    false
+   ],
+   [
+    "superlend",
+    "dataHelpers",
+    "0x99e8269dDD5c7Af0F1B3973A591b47E8E001BCac",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/42793",
+   "https://node.mainnet.etherlink.com",
+   "https://rpc.ankr.com/etherlink_mainnet"
+  ]
+ },
+ {
+  "chain": "map",
+  "id": 22776,
+  "compound": [],
+  "aave": [
+   [
+    "pu239",
+    "addressesProviderRegistry",
+    "0x0fBB7d9866D357f75a8fAf83330b7d089703464e",
+    false
+   ],
+   [
+    "pu239",
+    "dataHelpers",
+    "0xa9fc4Ea8A1dE8C722D8a70a73f26E2DBD89475bd",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/22776"
+  ]
+ },
+ {
+  "chain": "bevm",
+  "id": 11501,
+  "compound": [],
+  "aave": [
+   [
+    "blend-finance",
+    "addressesProviderRegistry",
+    "0x6aB5d5E96aC59f66baB57450275cc16961219796",
+    false
+   ],
+   [
+    "blend-finance",
+    "dataHelpers",
+    "0x5F314b36412765f3E1016632fD1Ad528929536CA",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/11501"
+  ]
+ },
+ {
+  "chain": "occ",
+  "id": 41923,
+  "compound": [],
+  "aave": [
+   [
+    "blend-finance",
+    "addressesProviderRegistry",
+    "0x58cCCdafe3B0DE4cB94d35F9CcC0680E4199C06B",
+    false
+   ],
+   [
+    "blend-finance",
+    "dataHelpers",
+    "0xf444a0333DAa67efC5b1C2c0B79F435dd0f652a9",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/41923"
+  ]
+ },
+ {
+  "chain": "lac",
+  "id": 274,
+  "compound": [
+   [
+    "capyfi",
+    "comptroller",
+    "0x123Abe3A273FDBCeC7fc0EBedc05AaeF4eE63060",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/274"
+  ]
+ },
+ {
+  "chain": "wc",
+  "id": 480,
+  "compound": [
+   [
+    "capyfi",
+    "comptroller",
+    "0x589d63300976759a0fc74ea6fA7D951f581252D7",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/480",
+   "https://worldchain-mainnet.g.alchemy.com/public",
+   "https://480.rpc.thirdweb.com",
+   "https://worldchain-mainnet.gateway.tenderly.co",
+   "https://sparkling-autumn-dinghy.worldchain-mainnet.quiknode.pro",
+   "https://worldchain.drpc.org"
+  ]
+ },
+ {
+  "chain": "jbc",
+  "id": 8899,
+  "compound": [
+   [
+    "jiblend",
+    "comptroller",
+    "0x603122Cdd36abCD164e448e1f3fbd33730edf35a",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/8899",
+   "https://rpc-l1.jibchain.net",
+   "https://rpc-l1.inan.in.th"
+  ]
+ },
+ {
+  "chain": "zilliqa",
+  "id": 32769,
+  "compound": [
+   [
+    "ionise-io",
+    "comptroller",
+    "0x5F8B5312636Af3bA626C12327a5d8EE4301A65F8",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/32769"
+  ]
+ },
+ {
+  "chain": "ethereumclassic",
+  "id": 61,
+  "compound": [
+   [
+    "nyke",
+    "comptroller",
+    "0x0040DCf62C380833dE60a502649567e939635fdB",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/61",
+   "https://etc.etcdesktop.com",
+   "https://rpc.etcmc.xyz",
+   "https://0xrpc.io/etc",
+   "https://ethereum-classic-mainnet.gateway.tatum.io/",
+   "https://rpc.swiftnodes.io/rpc/etc"
+  ]
+ },
+ {
+  "chain": "ronin",
+  "id": 2020,
+  "compound": [
+   [
+    "metalend",
+    "comptroller",
+    "0x9E8FD99Fc64Cd2fF4B5846361a7eC457f2b3808e",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2020",
+   "https://ronin.drpc.org",
+   "https://ronin-mainnet.gateway.tatum.io/",
+   "https://api-ronin-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://ronin.gateway.tenderly.co"
+  ]
+ },
+ {
+  "chain": "findora",
+  "id": 2152,
+  "compound": [
+   [
+    "forlend",
+    "comptroller",
+    "0x3b056De20d662B09f73bDb28Ea6fa7b7aC82259C",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2152"
+  ]
+ },
+ {
+  "chain": "shimmer_evm",
+  "id": 148,
+  "compound": [
+   [
+    "deepr-finance",
+    "comptroller",
+    "0xF7E452A8685D57083Edf4e4CC8064EcDcF71D7B7",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/148"
+  ]
+ },
+ {
+  "chain": "qiev3",
+  "id": null,
+  "compound": [
+   [
+    "qie-lend",
+    "comptroller",
+    "0x69a31E3D361C69B37463aa67Ef93067dC760fBD4",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": []
+ },
+ {
+  "chain": "berachain",
+  "id": 80094,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0x16C7d1F9EA48F7DE5E8bc3165A04E8340Da574fA",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/80094",
+   "https://rpc.berachain.com",
+   "https://berachain-rpc.publicnode.com",
+   "https://berachain.drpc.org",
+   "https://rpc.berachain-apis.com",
+   "https://berachain.therpc.io",
+   "https://berachain-mainnet.gateway.tatum.io/",
+   "https://bera.api.pocket.network",
+   "https://api-berachain-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+   "https://berachain.rpc.sentio.xyz",
+   "https://rpc.swiftnodes.io/rpc/berachain"
+  ]
+ },
+ {
+  "chain": "goat",
+  "id": 2345,
+  "compound": [
+   [
+    "sumer",
+    "comptroller",
+    "0x98Ec4C9605D69083089eCAf353037b40017b758e",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/2345",
+   "https://rpc.goat.network",
+   "https://goat-mainnet-alpha.drpc.org",
+   "https://rpc.ankr.com/goat_mainnet"
+  ]
+ },
+ {
+  "chain": "rei",
+  "id": 47805,
+  "compound": [
+   [
+    "filda",
+    "comptroller",
+    "0xEc1e6e331e990a0D8e40AC51f773e9c998ec7BC3",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/47805",
+   "https://rpc.rei.network"
+  ]
+ },
+ {
+  "chain": "elastos",
+  "id": 20,
+  "compound": [
+   [
+    "filda",
+    "comptroller",
+    "0xE52792E024697A6be770e5d6F1C455550265B2CD",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/20",
+   "https://api.elastos.io/esc",
+   "https://api.trinity-tech.io/esc",
+   "https://api2.elastos.io/esc",
+   "https://api2.elastos.io/eth",
+   "https://rpc.glidefinance.io/"
+  ]
+ },
+ {
+  "chain": "bittorrent",
+  "id": 199,
+  "compound": [
+   [
+    "filda",
+    "comptroller",
+    "0xE52792E024697A6be770e5d6F1C455550265B2CD",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/199",
+   "https://rpc.bittorrentchain.io/"
+  ]
+ },
+ {
+  "chain": "nibiru",
+  "id": 6900,
+  "compound": [
+   [
+    "nebula",
+    "comptroller",
+    "0x7bf2f10A061eAA9d12eff11D1c3cBaf402f86C22",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": []
+ },
+ {
+  "chain": "okexchain",
+  "id": 66,
+  "compound": [
+   [
+    "wepiggy",
+    "comptroller",
+    "0xaa87715e858b482931eb2f6f92e504571588390b",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/66",
+   "https://exchainrpc.okex.org",
+   "https://oktc-mainnet.public.blastapi.io",
+   "https://public.1rpc.io/oktc",
+   "https://oktc.drpc.org"
+  ]
+ },
+ {
+  "chain": "conflux",
+  "id": 1030,
+  "compound": [
+   [
+    "unitus",
+    "comptroller",
+    "0xA377eCF53253275125D0a150aF195186271f6a56",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/1030",
+   "https://evm.confluxrpc.com",
+   "https://conflux-espace.blockpi.network/v1/rpc/public"
+  ]
+ },
+ {
+  "chain": "boba",
+  "id": 288,
+  "compound": [
+   [
+    "paxo-finance",
+    "comptroller",
+    "0x301C76e7b60e9824E32991B8F29e1c4a03B4F65b",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/288",
+   "https://mainnet.boba.network/",
+   "https://boba-ethereum.gateway.tenderly.co",
+   "https://gateway.tenderly.co/public/boba-ethereum",
+   "https://public.1rpc.io/boba/eth",
+   "https://boba-eth.drpc.org",
+   "https://boba.api.pocket.network",
+   "https://api-boba-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c"
+  ]
+ },
+ {
+  "chain": "astrzk",
+  "id": 3776,
+  "compound": [
+   [
+    "keom",
+    "comptroller",
+    "0xcD906c5f632daFCBD23d574f85294B32E7986fD9",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": []
+ },
+ {
+  "chain": "kroma",
+  "id": 255,
+  "compound": [
+   [
+    "shoebillFinance-v2",
+    "comptroller",
+    "0x9f53Cd350c3aC49cE6CE673abff647E5fe79A3CC",
+    false
+   ]
+  ],
+  "aave": [],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/255",
+   "https://api.kroma.network",
+   "https://kroma.drpc.org",
+   "https://rpc-kroma.rockx.com"
+  ]
+ },
+ {
+  "chain": "unit0",
+  "id": 88811,
+  "compound": [],
+  "aave": [
+   [
+    "unilend-protocol",
+    "poolDatas",
+    "0x99118c1Ca7D0DC824719E740d4b4721009a267d6",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "citrea",
+  "id": 4114,
+  "compound": [],
+  "aave": [
+   [
+    "zentra",
+    "short",
+    "0x0FC811fE6bD0Be53717f9ca722E30a7bc4B90C31",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "katana",
+  "id": 747474,
+  "compound": [],
+  "aave": [
+   [
+    "ploutos",
+    "poolDatas",
+    "0x4DC446e349bDA9516033E11D63f1851d6B5Fd492",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/747474",
+   "https://katana.drpc.org",
+   "https://rpc.swiftnodes.io/rpc/katana",
+   "https://katana.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "besc",
+  "id": null,
+  "compound": [],
+  "aave": [
+   [
+    "hyperloan",
+    "short",
+    "0x3aDDb1f9F159326864B3d7046fB78150955e8587",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "assetchain",
+  "id": 42420,
+  "compound": [],
+  "aave": [
+   [
+    "Eden-finance",
+    "short",
+    "0x1d0c5587b05D2FBE944c118d581C3102E06D1726",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/42420",
+   "https://mainnet-rpc.assetchain.org"
+  ]
+ },
+ {
+  "chain": "fluent",
+  "id": 25363,
+  "compound": [],
+  "aave": [
+   [
+    "vena",
+    "poolDatas",
+    "0xb6eEF266933382661827E36fE3f936396e80166E",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "igra",
+  "id": 38833,
+  "compound": [],
+  "aave": [
+   [
+    "kaskad",
+    "poolDatas",
+    "0xFEaD8E14e58ecF72B5cD585458f07523F173E2F4",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "somnia",
+  "id": 5031,
+  "compound": [],
+  "aave": [
+   [
+    "tokos-fi",
+    "registry",
+    "0xEC6758e6324c167DB39B6908036240460a2b0168",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "crossfi",
+  "id": 4158,
+  "compound": [],
+  "aave": [
+   [
+    "pholend",
+    "short",
+    "0x09e7b6BF92ba8566939d59fE3e3844385d492E77",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/4158"
+  ]
+ },
+ {
+  "chain": "hydradx",
+  "id": 222222,
+  "compound": [],
+  "aave": [
+   [
+    "hydration-lending",
+    "registry",
+    "0x1b02E051683b5cfaC5929C25E84adb26ECf87B38",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/222222"
+  ]
+ },
+ {
+  "chain": "hedera",
+  "id": 295,
+  "compound": [],
+  "aave": [
+   [
+    "bonzo",
+    "registry",
+    "0x236897c518996163E7b313aD21D1C9fCC7BA1afc",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/295",
+   "https://hedera.linkpool.pro",
+   "https://295.rpc.thirdweb.com",
+   "https://mainnet.hedera.api.hgraph.io/rpc"
+  ]
+ },
+ {
+  "chain": "xlayer",
+  "id": 196,
+  "compound": [],
+  "aave": [
+   [
+    "zerolend",
+    "dataHelpers",
+    "0x97e59722318F1324008484ACA9C343863792cBf6",
+    true
+   ]
+  ],
+  "rpcs": [
+   "https://xlayerrpc.okx.com",
+   "https://lb.routeme.sh/rpc/evm/196",
+   "https://rpc.nodeflare.app/xlayer/public",
+   "https://rpc.xlayer.tech",
+   "https://endpoints.omniatech.io/v1/xlayer/mainnet/public",
+   "https://xlayer.drpc.org",
+   "https://rpc.ankr.com/xlayer",
+   "https://xlayer-mainnet.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "saga",
+  "id": 5464,
+  "compound": [],
+  "aave": [
+   [
+    "palomino-finance",
+    "dataHelpers",
+    "0x96a5A828c554b4D5ACdb9f0f4bb15b24C0423B69",
+    false
+   ]
+  ],
+  "rpcs": []
+ },
+ {
+  "chain": "astar",
+  "id": 592,
+  "compound": [],
+  "aave": [
+   [
+    "sio2",
+    "addressesProviderRegistry",
+    "0x9D8bB85b1c728f69672923dD4A0209EC8b75EFda",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/592",
+   "https://evm.astar.network/",
+   "https://rpc.astar.network:8545",
+   "https://astar.public.blastapi.io",
+   "https://getblock.io/nodes/bsc/",
+   "https://public.1rpc.io/astr",
+   "https://astar-mainnet.g.alchemy.com/v2/demo",
+   "https://astar.api.onfinality.io/public",
+   "https://astar.public.curie.radiumblock.co/http",
+   "https://astar.public.curie.radiumblock.co/ws"
+  ]
+ },
+ {
+  "chain": "oas",
+  "id": 248,
+  "compound": [],
+  "aave": [
+   [
+    "palmy",
+    "addressesProviderRegistry",
+    "0xf4A3dDC5F629d9CB14DF4e7d5f78326153eA02A3",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/248",
+   "https://rpc.mainnet.oasys.games",
+   "https://oasys.api.pocket.network"
+  ]
+ },
+ {
+  "chain": "godwoken_v1",
+  "id": 71402,
+  "compound": [],
+  "aave": [
+   [
+    "hadouken-fi-lending",
+    "short",
+    "0x10797360711178183455cCa40533FfB62a17C60f",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/71402"
+  ]
+ },
+ {
+  "chain": "cronos_zkevm",
+  "id": 388,
+  "compound": [],
+  "aave": [
+   [
+    "amply-finance",
+    "dataHelpers",
+    "0x47656eb2A31094b348EBF458Eccb942d471324eD",
+    false
+   ]
+  ],
+  "rpcs": [
+   "https://lb.routeme.sh/rpc/evm/388",
+   "https://mainnet.zkevm.cronos.org",
+   "https://cronos-zkevm.drpc.org",
+   "https://cronos-zkevm.rpc.sentio.xyz"
+  ]
+ },
+ {
+  "chain": "tara",
+  "id": 841,
+  "compound": [],
+  "aave": [
+   [
+    "meridian-lend",
+    "addressesProviderRegistry",
+    "0x96a52CdFE64749C146E13F68641073566275433e",
+    false
+   ]
+  ],
+  "rpcs": []
+ }
+]

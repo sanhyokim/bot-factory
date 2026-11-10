@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS chain_stranded (
     allowed           INTEGER,            -- 仕組みの答え: 0 なら清算してよい。それ以外は断った番号。NULL は聞けなかった
     cash_ok           INTEGER,            -- 担保の市場に、受け取る担保の分の現金があるか
     market_ratio      REAL,               -- 担保の値段: 仕組みの値段表 ÷ 市場の値段(Aave の値段表)。NULL は比べられない
+    repay_ratio       REAL,               -- 返すトークンの値段: 仕組みの値段表 ÷ 市場の値段。NULL は比べられない
     updated_at        TEXT NOT NULL,
     PRIMARY KEY (chain, controller, borrower)
 );
@@ -93,9 +94,10 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     venues.ensure_schema(conn)
     conn.executescript(SCHEMA)
     have = {r[1] for r in conn.execute("PRAGMA table_info(chain_stranded)")}
-    if "market_ratio" not in have:          # 2026-11-08 に足した列
-        conn.execute("ALTER TABLE chain_stranded ADD COLUMN market_ratio REAL")
-        conn.commit()
+    for col in ("market_ratio", "repay_ratio"):     # 2026-11-08・11-10 に足した列
+        if col not in have:
+            conn.execute(f"ALTER TABLE chain_stranded ADD COLUMN {col} REAL")
+            conn.commit()
 
 
 @dataclass
@@ -295,7 +297,7 @@ class Finder:
                 coll[m] = held * rate / 1e18 / 10 ** dec * px
         row = {"debt_usd": sum(debt.values()) if debt else None, "collateral_usd": sum(coll.values()) if coll else None,
                "repay_market": None, "collateral_market": None, "repay_usd": None, "profit_usd": None,
-               "allowed": None, "cash_ok": None, "market_ratio": None}
+               "allowed": None, "cash_ok": None, "market_ratio": None, "repay_ratio": None}
         if not debt or not coll:
             return row
         rm, cm = max(debt, key=debt.get), max(coll, key=coll.get)
@@ -311,6 +313,10 @@ class Finder:
         mkt = self._once(("market", token or "native"), lambda: self._market_price(token))
         c_now = self._price(place, cm)
         row["market_ratio"] = c_now / mkt if mkt and c_now else None
+        r_token, _ = r.underlying(rm)       # 返すトークンも比べる(仕組みの値段表だけが安いと、市場で買う方が高くつく)
+        r_mkt = self._once(("market", r_token or "native"), lambda: self._market_price(r_token))
+        r_now = self._price(place, rm)
+        row["repay_ratio"] = r_now / r_mkt if r_mkt and r_now else None
         if row["profit_usd"] < MIN_ASK_USD:       # 小さすぎる清算には、清算してよいかと現金を聞かない(読む回数を減らす)
             return row
         # 清算してよいか(Compound の呼び方だけ。利息を足してから聞く)と、担保の市場の現金
@@ -337,14 +343,24 @@ class Finder:
 
     # --- 1回 ---
     def run(self, places: list[Place], *, from_block: int, to_block: int) -> dict:
-        now = int(self.clock())
-        self._memo.clear()
-        total = {"places": len(places), "borrowers": 0, "open": 0, "gone": 0}
         for p in places:
             self.out(f"  {p.name}({p.controller}・{p.dialect.name} の呼び方・市場 {len(p.markets)}か所)")
         self.out(f"  借りた記録を、市場 {sum(len(p.markets) for p in places)}か所に決めて読む"
                  f"(ブロック {from_block:,}〜{to_block:,})")
-        total["added"] = self.discover(places, from_block, to_block)
+        added = self.discover(places, from_block, to_block)
+        return {**self.check(places), "added": added}
+
+    def add_borrowers(self, place: Place, users) -> int:
+        """ほかの読み方で見つけた借り手を帳簿に足す(裾野の調べは、借りた記録を自分でまとめて読む)。"""
+        added = sum(self._add(place, u) for u in users)
+        self.conn.commit()
+        return added
+
+    def check(self, places: list[Place]) -> dict:
+        """帳簿の借り手の今の状態を読み、今清算できる借り手を chain_stranded に残す。"""
+        now = int(self.clock())
+        self._memo.clear()
+        total = {"places": len(places), "borrowers": 0, "open": 0, "gone": 0}
         for p in places:
             users = self.borrowers(p)
             total["borrowers"] += len(users)
@@ -357,20 +373,20 @@ class Finder:
                 self.conn.execute(
                     """INSERT INTO chain_stranded(chain, controller, borrower, first_seen, last_seen, runs, debt_usd,
                            collateral_usd, repay_market, repay_symbol, collateral_market, collateral_symbol, repay_usd,
-                           profit_usd, allowed, cash_ok, market_ratio, updated_at)
-                       VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?,?,?,?)
+                           profit_usd, allowed, cash_ok, market_ratio, repay_ratio, updated_at)
+                       VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?)
                        ON CONFLICT(chain, controller, borrower) DO UPDATE SET last_seen = excluded.last_seen,
                            runs = runs + 1, debt_usd = excluded.debt_usd, collateral_usd = excluded.collateral_usd,
                            repay_market = excluded.repay_market, repay_symbol = excluded.repay_symbol,
                            collateral_market = excluded.collateral_market,
                            collateral_symbol = excluded.collateral_symbol, repay_usd = excluded.repay_usd,
                            profit_usd = excluded.profit_usd, allowed = excluded.allowed, cash_ok = excluded.cash_ok,
-                           market_ratio = excluded.market_ratio,
+                           market_ratio = excluded.market_ratio, repay_ratio = excluded.repay_ratio,
                            updated_at = excluded.updated_at""",
                     (self.chain.name, p.controller, user, now, now, m["debt_usd"], m["collateral_usd"],
                      m["repay_market"], sym["repay_market"], m["collateral_market"], sym["collateral_market"],
                      m["repay_usd"], m["profit_usd"], m["allowed"], m["cash_ok"], m["market_ratio"],
-                     now_jst().isoformat(timespec="seconds")))
+                     m["repay_ratio"], now_jst().isoformat(timespec="seconds")))
             gone = self.conn.execute(
                 f"""DELETE FROM chain_stranded WHERE chain = ? AND controller = ?
                     AND borrower NOT IN ({','.join('?' * len(short)) or "''"})""",

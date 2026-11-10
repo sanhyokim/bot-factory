@@ -102,6 +102,17 @@ def main(argv: list[str] | None = None) -> int:
     st.add_argument("--days", type=float, default=180, help="借りた記録をさかのぼる日数")
     st.add_argument("--top", type=int, default=20, help="表に出す借り手の数")
 
+    tl = sub.add_parser("tail-survey", help="小さいチェーンも含めて、貸し借りの仕組みの写しの清算と取り残しを広く読み、"
+                                            "表にまとめる(裾野の調べ。読み取りだけ。第0期)")
+    tl.add_argument("--targets", default="factory/onchain/tail_targets.json", help="調べるチェーンと仕組みの材料")
+    tl.add_argument("--out", default="data/tail", help="結果を置くフォルダー(チェーンごとの .json と summary.md)")
+    tl.add_argument("--days", type=float, default=None, help="記録をさかのぼる日数(既定は config.yaml の tail.days)")
+    tl.add_argument("--chains", default="", help="カンマ区切りのチェーンの名前(既定は材料のすべて)")
+    tl.add_argument("--workers", type=int, default=None, help="同時に調べるチェーンの数")
+    tl.add_argument("--minutes", type=float, default=None, help="1チェーンの記録を読む時間の上限(分)")
+    tl.add_argument("--redo", action="store_true", help="結果のあるチェーンも読み直す")
+    tl.add_argument("--allow", default=None, help="使ってよい接続先のドメインの一覧(1行1つ。無ければ絞らない)")
+
     sv = sub.add_parser("chain-survey", help="Arbitrum 以外のチェーン(config.yaml)ごとに、Aave の清算・清算の地図・裁定を"
                                              "順に読み、最後に1チェーン1行でまとめる(読み取りだけ。第0期)")
     sv.add_argument("--chains", default="", help="カンマ区切りのチェーンの名前(既定は config.yaml の Arbitrum 以外すべて)")
@@ -176,6 +187,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "venue-scan":
         from .onchain import scan_command
         return scan_command.run_venues(args.chain, args.days, args.top, known=args.known)
+    if args.cmd == "tail-survey":
+        from .onchain import tail
+        chains = [c.strip() for c in args.chains.split(",") if c.strip()] or None
+        return tail.run(args.targets, args.out, days=args.days, chains=chains, workers=args.workers,
+                        minutes=args.minutes, redo=args.redo, allow_path=args.allow)
     if args.cmd == "stranded-scan":
         from .onchain import scan_command
         return scan_command.run_stranded(args.chain, args.days, args.top)

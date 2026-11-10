@@ -48,7 +48,9 @@ SEND_METHODS = frozenset({"eth_sendRawTransaction", "eth_sendTransaction", "eth_
 _RATE = re.compile(r"rate|too many requests|requests per|throttl|capacity|limit reached", re.IGNORECASE)
 # 使える量を使い切った(1日・1か月・プランの上限)。すぐには戻らないので長く休ませる
 _QUOTA = re.compile(r"usage limit|quota|daily|monthly|credits|current plan|upgrade your plan", re.IGNORECASE)
-_REVERT = re.compile(r"execution reverted|\breverted\b", re.IGNORECASE)
+# 呼び出しが通らなかった時の言い方(チェーンや接続先のプログラムごとに違う。小さいチェーンは種類が多い)
+_REVERT = re.compile(r"\brevert(ed)?\b|invalid opcode|invalid jump|stack underflow|bad instruction|out of gas"
+                     r"|vm exception|vm execution error|evm error", re.IGNORECASE)
 # eth_getLogs で範囲が広すぎる・件数が多すぎると断られた時の言い方(接続先ごとに違う)。
 # 「使いすぎ」の言い方(limit exceeded など)と取り違えないよう、範囲・件数を言うものだけにする
 _RANGE = re.compile(r"range|too many (blocks|results|logs)|more than \d+|max(imum)? results|response size"
