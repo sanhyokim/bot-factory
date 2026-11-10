@@ -83,6 +83,7 @@ class FakeNode:
         self.bodies: list[dict] = []                       # 届いた呼び出しそのもの(引数を確かめる時に)
         self.mode: dict[str, str] = {}                     # URL → ok / rate / down / timeout / http500 / archive
         self.max_range: dict[str, int] = {}                # URL → eth_getLogs で読める最大ブロック数
+        self.max_addresses: dict[str, int] = {}            # URL → eth_getLogs で1回に決められる住所の数
         self.logs: list[dict] = []
         self.revert = False
         self.archive = True                                # 古いブロックの状態を読めるか
@@ -200,6 +201,10 @@ class FakeNode:
             limit = self.max_range.get(url)
             if limit and hi - lo + 1 > limit:
                 return err(-32602, f"exceed maximum block range: {limit}")
+            most, given = self.max_addresses.get(url), p[0].get("address")
+            if most and isinstance(given, list) and len(given) > most:
+                return err(-32602, f"A maximum of {most} addresses is allowed. No limit on a dedicated node: "
+                                   "https://www.allnodes.com/publicnode")
             t0 = (p[0].get("topics") or [None])[0]
             t0 = None if t0 is None else set(t0) if isinstance(t0, list) else {t0}    # 並べたら「どれか」
             want = p[0].get("address") or []

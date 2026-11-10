@@ -338,6 +338,77 @@ def test_addressless_logs_are_skipped_separately():
     assert "(住所を決めずに)(古いブロック)「Please specify an address" in notes
 
 
+MARKETS = ["0x" + f"{i:02x}" * 20 for i in range(1, 26)]       # 25か所の市場
+
+
+def market_logs(node):
+    """市場ごとに、いくつかのブロックで1件ずつのログ(同じブロックでは市場の順に logIndex を振る)。"""
+    for b in (5, 3_000, 9_999):
+        for i, m in enumerate(MARKETS):
+            if (b + i) % 3:
+                node.logs.append({"address": m, "blockNumber": hex(b), "logIndex": hex(i),
+                                  "transactionHash": "0x" + f"{b:064x}", "topics": [check.LIQUIDATION_CALL],
+                                  "data": "0x"})
+    return [(int(lg["blockNumber"], 16), int(lg["logIndex"], 16)) for lg in node.logs]
+
+
+def test_logs_split_addresses_when_only_the_address_limited_endpoint_reads_wide():
+    """11/10 BSC の Venus(市場55か所): 広い範囲を読む publicnode は住所10か所まで、公式の接続先は
+    ログに「limit exceeded」、drpc・1rpc は50〜79ブロックまで。範囲を狭めずに、住所を10か所ずつに分けて読む。"""
+    node = FakeNode(head=100_000)
+    want = market_logs(node)
+    node.max_addresses[A] = 10
+    refuse(node, B, "limit exceeded", lambda body: body["method"] == "eth_getLogs", code=-32005)
+    node.max_range[C] = 50
+    clock = Clock()
+    chain = Chain(make_relay(node, clock=clock), cache_depth=100, max_log_blocks=10_000)
+    logs = chain.logs(from_block=1, to_block=10_000, address=MARKETS, topics=[check.LIQUIDATION_CALL])
+    assert [(int(lg["blockNumber"], 16), int(lg["logIndex"], 16)) for lg in logs] == sorted(want)
+    assert chain.addr_step == 10 and chain.log_step == 10_000        # 範囲は狭めなかった
+    assert clock.t - 1000 < 60                                        # 公式の接続先が休み明けになるのを待たない
+    sent = [b["params"][0]["address"] for b in node.bodies if b["method"] == "eth_getLogs"]
+    assert [len(a) for a in sent[-3:]] == [10, 10, 5]
+    a = chain.relay.endpoints[0]
+    assert a.max_addresses == 10 and a.cooldown_until == 0 and "A maximum of 10 addresses" in a.address_note
+    notes = "\n".join(check.endpoint_notes(chain.relay))
+    assert "ログの住所は10か所ずつにする" in notes
+    for _ in range(3):                                                # 続けて断る公式の接続先は、ログの時だけ外す
+        chain.logs(from_block=10_001, to_block=20_000, address=MARKETS)
+    assert chain.relay.endpoints[1].blocked.get("eth_getLogs@old", 0) > clock.t
+
+
+def test_addresses_are_not_split_when_another_endpoint_reads_them_all():
+    node = FakeNode(head=100_000)
+    want = market_logs(node)
+    node.max_addresses[A] = 10
+    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=10_000)
+    logs = chain.logs(from_block=1, to_block=10_000, address=MARKETS, topics=[check.LIQUIDATION_CALL])
+    assert len(logs) == len(want) and chain.addr_step is None
+    assert all(len(b["params"][0]["address"]) == 25 for b in node.bodies
+               if b["method"] == "eth_getLogs")
+
+
+def test_split_addresses_instead_of_waiting_for_a_resting_endpoint():
+    """11/10 Avalanche: 全部の住所を受ける公式の接続先が断り(429)続け、publicnode は10か所まで。
+    休み明けを待たずに、住所を分けて publicnode で読む。"""
+    node = FakeNode(head=100_000)
+    want = market_logs(node)
+    node.mode[A] = "rate"
+    node.max_addresses[B] = 10
+    clock = Clock()
+    chain = Chain(make_relay(node, urls=(A, B), clock=clock), cache_depth=100, max_log_blocks=10_000)
+    logs = chain.logs(from_block=1, to_block=10_000, address=MARKETS)
+    assert len(logs) == len(want) and chain.addr_step == 10 and clock.t - 1000 < 60
+
+
+def test_one_address_is_never_split():
+    node = FakeNode(head=100_000)
+    node.max_addresses[A] = node.max_addresses[B] = node.max_addresses[C] = 1
+    chain = Chain(make_relay(node), cache_depth=100, max_log_blocks=10_000)
+    assert chain.logs(from_block=1, to_block=100, address=POOL) == []
+    assert chain.addr_step is None
+
+
 def test_success_clears_the_count_of_refusals():
     node = FakeNode()
     flaky = {"on": True}

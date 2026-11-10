@@ -8,6 +8,9 @@
 - 「取引が通らない(revert)」「ログの範囲が広すぎる」は接続先の不調ではないので休ませず、呼んだ側に返す。
   広い範囲を受ける接続先がどれも使えず、狭い範囲なら今すぐ読める接続先がある時は、あきらめずに
   「範囲が広すぎる」として返し、呼んだ側(chain.py)に範囲を狭めさせる
+- ログの住所の数で断る接続先(publicnode は1回10か所まで)は、その数を覚える。多くの住所を一度に受ける
+  接続先が使えず、住所を分ければ読める接続先がある時は「住所が多すぎる」として返し、呼んだ側に住所を分けさせる
+  (範囲を狭めるより呼ぶ回数が少ない。11/10 BSC の Venus は市場55か所)
 - 同じ読み方(例: 古いブロックの状態)を3回続けて断った接続先は、ほかの接続先がその読み方に答えられるなら、
   その読み方の時だけ10分外す(無料の接続先は古いブロックを読ませないことが多く、毎回試すと回数の無駄)
 - 待てる長さは使い道ごとに違う。本番は機会が消えるので短く、調査は急がないので長く待つ
@@ -51,6 +54,11 @@ _REVERT = re.compile(r"execution reverted|\breverted\b", re.IGNORECASE)
 _RANGE = re.compile(r"range|too many (blocks|results|logs)|more than \d+|max(imum)? results|response size"
                     r"|limited to \d+", re.IGNORECASE)
 _NUMBER = re.compile(r"\d[\d,]*")
+# eth_getLogs で、1回に決められる住所の数を言うもの(例: publicnode「A maximum of 10 addresses is allowed」)
+_ADDRESSES = re.compile(r"(?:maximum|max|at most|up to)\D{0,15}?(\d+)\s+address", re.IGNORECASE)
+# ログをまったく読ませない接続先の言い方(BSC の公式の接続先は eth_getLogs に「limit exceeded」とだけ返す)。
+# 「使いすぎ」とは違い、待っても読めないので、休ませずにその読み方から外していく
+_NO_LOGS = re.compile(r"^\s*limit exceeded\s*$", re.IGNORECASE)
 
 CACHE_ENDPOINT = "cache"
 MAX_ERROR_COOLDOWN = 600.0     # つながらないのが続いた時に休ませる長さの上限(秒)
@@ -85,6 +93,14 @@ class RangeTooLarge(RpcError):
         self.max_span = max_span
 
 
+class TooManyAddresses(RpcError):
+    """ログの住所が多すぎて、今使える接続先が受けない。max_addresses か所ずつに分ければ読める。"""
+
+    def __init__(self, message: str, max_addresses: int):
+        super().__init__(message)
+        self.max_addresses = max_addresses
+
+
 class _TryNext(Exception):
     """この接続先はあきらめて次へ。hard なら、この呼び出しではもうこの接続先を使わない。"""
 
@@ -107,8 +123,12 @@ class Endpoint:
     served: set = field(default_factory=set)                 # 答えを返せた読み方
     blocked: dict = field(default_factory=dict)              # 読み方 → この時刻まで、その読み方では使わない
     block_notes: dict = field(default_factory=dict)          # 読み方 → 断られた言い方
+    max_addresses: int | None = None # ログで1回に決められる住所の数(断られて分かった上限)
+    address_note: str = ""           # 住所の数で断られた時の言い方
 
-    def fits(self, span: int | None) -> bool:
+    def fits(self, span: int | None, n_addr: int | None = None) -> bool:
+        if n_addr and self.max_addresses is not None and n_addr > self.max_addresses:
+            return False
         return span is None or self.log_limit is None or span <= self.log_limit
 
 
@@ -177,12 +197,16 @@ class Relay:
         tried: set[str] = set()
         skip: set[str] = set()       # はっきり断られた(古い状態が無い など)接続先。休ませないが、この呼び出しでは使わない
         span = _log_span(method, params)
+        n_addr = _addr_count(method, params)
         kind = _kind(method, params)
         attempts, max_attempts = 0, 2 * len(self.endpoints)
         while attempts < max_attempts:
-            ep, wait = self._pick(purpose, tried, skip, span, kind)
+            ep, wait = self._pick(purpose, tried, skip, span, kind, n_addr)
             if ep is None:
+                # 住所を分ければ今すぐ読める接続先があれば、待たずに分けさせる
+                self._raise_if_fewer(span, n_addr, skip, kind, purpose, None)
                 if wait == math.inf or self._clock() + wait > deadline:
+                    self._raise_if_fewer(span, n_addr, skip, kind, purpose, deadline)
                     self._raise_if_narrower(span, skip, kind, deadline)
                 if wait == math.inf:
                     break
@@ -199,6 +223,7 @@ class Relay:
                 if e.hard:
                     skip.add(ep.url)
                 continue
+        self._raise_if_fewer(span, n_addr, skip, kind, purpose, deadline)
         self._raise_if_narrower(span, skip, kind, deadline)
         if span is not None and not any(ep.fits(span) for ep in self.endpoints):
             limits = [ep.log_limit for ep in self.endpoints if ep.log_limit]
@@ -208,7 +233,7 @@ class Relay:
         raise RpcError(f"{self.chain}: {method} が{attempts}回とも失敗した。直近のエラー: {self._last_errors()}")
 
     def _pick(self, purpose: str, tried: set[str], skip: set[str], span: int | None = None,
-              kind: str | None = None) -> tuple[Endpoint | None, float]:
+              kind: str | None = None, n_addr: int | None = None) -> tuple[Endpoint | None, float]:
         """使える接続先のうち、まだ試していない・直近1分に使った回数が少ないものを選ぶ。
         使えるものが無ければ、一番早く使えるようになるまでの秒数を返す(もう使える接続先が無ければ inf)。
         この読み方を続けて断っている接続先(blocked)は、外している間は数えない。"""
@@ -218,7 +243,7 @@ class Relay:
         for i, ep in enumerate(self.endpoints):
             while ep.recent and now - ep.recent[0][0] >= 60:
                 ep.recent.popleft()
-            if ep.url in skip or not ep.fits(span):     # ログの範囲が、この接続先の上限より広い
+            if ep.url in skip or not ep.fits(span, n_addr):     # ログの範囲・住所の数が、この接続先の上限を超える
                 continue
             if kind is not None and ep.blocked.get(kind, 0) > now:
                 continue
@@ -232,6 +257,33 @@ class Relay:
         if ready:
             return min(ready, key=lambda r: r[:3])[3], 0.0
         return None, min(waits)
+
+    def _raise_if_fewer(self, span: int | None, n_addr: int | None, skip: set[str], kind: str, purpose: str,
+                        deadline: float | None) -> None:
+        """住所の数で断った接続先が、住所を分ければこの範囲を読める時は、TooManyAddresses で返す(呼んだ側が
+        その数ずつに分けて読み直す)。deadline が None なら今すぐ使える接続先だけ、あれば待てる長さのうちに
+        使えるようになる接続先も数える。分けられる接続先が複数あれば、一番多く受けるものに合わせる。"""
+        if not n_addr:
+            return
+        now = self._clock()
+        cap = max(1, int(self.per_minute * self.shares[purpose]))
+        usable = []
+        for ep in self.endpoints:
+            if not ep.max_addresses or ep.max_addresses >= n_addr or not ep.fits(span) or ep.url in skip \
+                    or ep.blocked.get(kind, 0) > now:
+                continue
+            if deadline is None:
+                busy = sum(1 for t, p in ep.recent if p == purpose and now - t < 60) >= cap
+                if ep.cooldown_until > now or busy:
+                    continue
+            elif ep.cooldown_until > deadline:
+                continue
+            usable.append(ep)
+        if usable:
+            best = max(usable, key=lambda ep: ep.max_addresses)
+            raise TooManyAddresses(f"{self.chain}: {n_addr}か所の住所のログを一度に読める接続先が今は無い。"
+                                   f"{_short(best.url)} なら{best.max_addresses}か所ずつ読める"
+                                   f"(直近のエラー: {self._last_errors()})", best.max_addresses)
 
     def _raise_if_narrower(self, span: int | None, skip: set[str], kind: str, deadline: float) -> None:
         """この範囲を受ける接続先がどれも使えない(はっきり断った・外した・待てる長さを過ぎて休む)が、範囲を
@@ -283,6 +335,16 @@ class Relay:
                 self._served(ep, kind)       # 取引を試せた(接続先は答えられる)
                 raise CallReverted(msg, err.get("data") if isinstance(err, dict) else None)
             span = _log_span(method, params)
+            n_addr = _addr_count(method, params)
+            limit = _ADDRESSES.search(msg) if n_addr else None
+            if limit and int(limit.group(1)) < n_addr:
+                # この接続先の住所の数の上限を覚え、この呼び出しは別の接続先に回す(休ませない。分けた時に使う)
+                ep.max_addresses = int(limit.group(1))
+                ep.address_note = msg[:160]
+                self._fail(ep, purpose, 0, f"住所の数で断られた({n_addr}か所: {msg[:120]})")
+            if span is not None and _NO_LOGS.match(msg):
+                self._strike(ep, kind, msg)
+                self._fail(ep, purpose, 0, f"ログを断られた({msg[:80]})", hard=True)
             if span is not None and _RANGE.search(msg):
                 # この接続先の上限を覚え、この呼び出しは別の接続先に回す(休ませない)
                 # (上限より広い範囲には fits() で使わなくなるので、hard にはしない。狭めた時に使う)
@@ -381,6 +443,16 @@ def _log_span(method: str, params: list) -> int | None:
     if not (isinstance(lo, str) and isinstance(hi, str) and lo.startswith("0x") and hi.startswith("0x")):
         return None
     return int(hi, 16) - int(lo, 16) + 1
+
+
+def _addr_count(method: str, params: list) -> int | None:
+    """eth_getLogs で決めた住所の数(決めていなければ None)。"""
+    if method != "eth_getLogs" or not params or not isinstance(params[0], dict):
+        return None
+    a = params[0].get("address")
+    if not a:
+        return None
+    return 1 if isinstance(a, str) else len(a)
 
 
 def _kind(method: str, params: list) -> str:
