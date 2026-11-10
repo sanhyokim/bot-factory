@@ -144,6 +144,31 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
     log_blocks: 500         # 交換の記録を1回で読むブロック数(記録が多いので狭く。1回の答えが大きすぎると時間切れになる)。チェーンごとの arb_log_blocks が優先
     sample_actors: 15       # 受領書を読んで財布・ガス代・優先レーンを確かめる主体の数(粗利の多い順)
     sample_per_actor: 20    # 1主体あたり、受領書を読む裁定の数(粗利の大きい順)
+  tail:                     # 裾野の調べ(tail-survey。2026-11-10 の戦略の A。11/24 まで)
+    days: 30                # 清算の記録と借りた記録をさかのぼる日数
+    minutes_per_chain: 30   # 1チェーンの記録を読む時間の上限(超えたら、読めた日数までで集計する)
+    workers: 6              # 同時に調べるチェーンの数
+    max_endpoints: 6        # 1チェーンで中継に入れる接続先の数(答えの速い順)
+    probe_endpoints: 16     # 1チェーンで確かめる接続先の数
+    max_borrowers: 3000     # 1つの仕組みで、今の状態を読む借り手の数の上限
+    prices_url: https://coins.llama.fi   # 市場の値段(DefiLlama の値段表。小さいチェーンには Aave の値段表が無い)
+    min_confidence: 0.9     # 値段の確からしさがこれ未満なら、値段なしとして扱う
+    max_price_age_hours: 24 # これより古い値段は、値段なしとして扱う
+    exclude_hosts:          # 使わない接続先(鍵が要る・送信用・出どころの分からない寄せ集め)
+      - routeme.sh
+      - alchemy.com
+      - ankr.com
+      - infura.io
+      - tatum.io
+      - thirdweb.com
+      - blxrbdn.com
+      - flashbots.net
+      - 48.club
+      - getblock.io
+      - nownodes.io
+      - quiknode.pro
+      - chainstack.com
+      - backrunshield.com
   chains:
     arbitrum:
       chain_id: 42161
