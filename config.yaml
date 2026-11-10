@@ -259,7 +259,7 @@ onchain:                    # チェーン上の道具(設計書 2026-11-04 の�
         multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11"
     bsc:
       chain_id: 56
-      block_seconds: 0.75
+      block_seconds: 0.45                          # 2026-11-10 の venue-scan で7日 = 1,343,402ブロック(読めない時の目安)
       cache_depth: 800
       max_log_blocks: 5000
       arb_log_blocks: 20
